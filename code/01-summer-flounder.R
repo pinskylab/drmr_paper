@@ -163,9 +163,9 @@ drm_rec <-
                           est_surv = 1,
                           est_init = 0,
                           minit = 1),
-          .priors = list(pr_phi_a = 1, pr_phi_b = .1,
-                         pr_alpha_a = 4.2, pr_alpha_b = 5.8,
-                         pr_zeta_a = 7, pr_zeta_b = 3))
+          .priors = list(pr_alpha_a = 4.2, pr_alpha_b = 5.8,
+                         pr_zeta_a = 7, pr_zeta_b = 3),
+          algo_args = list(parallel_chains = 4))
 
 ##--- Convergence check & parameter estimates ----
 
