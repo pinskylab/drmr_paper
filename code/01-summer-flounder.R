@@ -3,7 +3,7 @@ library(ggplot2)
 library(bayesplot)
 library(sf)
 library(drmr)
-library(patchwork)
+library(cowplot)
 library(cmdstanr)
 
 bayesplot::color_scheme_set(scheme = "mix-pink-teal")
@@ -173,6 +173,7 @@ mcmc_diag(drm_rec) |>
   print() |>
   summary()
 
+par(mfrow = c(1, 2))
 plot(drm_rec)
 plot(drm_rec, type = "density")
 
@@ -184,27 +185,24 @@ summary(drm_rec, probs = c(.1, .9))
 
 ##--- comparing some priors and posteriors ----
 
-draws(drm_rec, variables = "phi") |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dgamma(x,
-                                  shape = drm_rec$data$pr_phi_a,
-                                  rate = drm_rec$data$pr_phi_b),
-                xlim = c(0, 3),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
+##--- * Base R ----
+plot(drm_rec, variables = "phi", type = "density")
+curve(dgamma(x, 
+             shape = drm_rec$data$pr_phi_a, 
+             rate = drm_rec$data$pr_phi_b), 
+      add = TRUE, 
+      lty = 2,
+      lwd = 2)
 
-draws(drm_rec, variables = c("alpha")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x,
-                                 shape1 = drm_rec$data$pr_alpha_a,
-                                 shape2 = drm_rec$data$pr_alpha_b),
-                xlim = c(0, 1),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
+plot(drm_rec, variables = "alpha", type = "density")
+curve(dbeta(x,
+            shape1 = drm_rec$data$pr_alpha_a,
+            shape2 = drm_rec$data$pr_alpha_b), 
+      add = TRUE, 
+      lty = 2,
+      lwd = 2)
+
+##--- * ggplot ----
 
 draws(drm_rec, variables = c("zeta")) |>
   mcmc_dens_overlay() +
@@ -256,7 +254,6 @@ mcmc_diag(drm_surv) |>
   summary()
 
 plot(drm_surv)
-plot(drm_surv, type = "density")
 
 ##--- parameter estimates ----
 
@@ -264,67 +261,7 @@ summary(drm_surv)
 ## specific quantiles
 summary(drm_surv, probs = c(.1, .9))
 
-##--- comparing some priors and posteriors ----
-
-draws(drm_surv, variables = c("phi")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dgamma(x,
-                                  shape = drm_surv$data$pr_phi_a,
-                                  rate = drm_surv$data$pr_phi_b),
-                xlim = c(0, 3),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_surv, variables = c("alpha")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x,
-                                 shape1 = drm_surv$data$pr_alpha_a,
-                                 shape2 = drm_surv$data$pr_alpha_b),
-                xlim = c(0, 1),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_surv, variables = c("zeta")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x,
-                                 shape1 = drm_surv$data$pr_zeta_a,
-                                 shape2 = drm_surv$data$pr_zeta_b),
-                xlim = c(0, 1),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_surv, variables = c("sigma_t")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dlnorm(x,
-                                  meanlog = drm_surv$data$pr_lsigma_t_mu,
-                                  sdlog = drm_surv$data$pr_lsigma_t_sd),
-                xlim = c(0, .5),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_surv, variables = c("xi")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) {
-    y <- - x
-    dnorm(log(y),
-          mean = drm_surv$data$pr_lmxi_mu,
-          sd = drm_surv$data$pr_lmxi_sd) / y
-  },
-  xlim = c(-5, -1e-16),
-  n = 501,
-  inherit.aes = FALSE,
-  color = 2,
-  lwd = 1.2)
-
-##--- most complex model ----
+##--- An even more complex model ----
 
 drm_rs <-
   update(drm_rec,
@@ -336,6 +273,7 @@ mcmc_diag(drm_rs) |>
   print() |>
   summary()
 
+par(mfrow = c(4, 2))
 plot(drm_rs)
 plot(drm_surv, type = "density")
 
@@ -345,96 +283,27 @@ summary(drm_rs)
 ## specific quantiles
 summary(drm_rs, probs = c(.1, .9))
 
-##--- comparing some priors and posteriors ----
-
-draws(drm_rs, variables = c("phi")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dgamma(x,
-                                  shape = drm_rs$data$pr_phi_a,
-                                  rate = drm_rs$data$pr_phi_b),
-                xlim = c(0, 3),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_rs, variables = c("alpha")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x,
-                                 shape1 = drm_rs$data$pr_alpha_a,
-                                 shape2 = drm_rs$data$pr_alpha_b),
-                xlim = c(0, 1),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_rs, variables = c("zeta")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x,
-                                 shape1 = drm_rs$data$pr_zeta_a,
-                                 shape2 = drm_rs$data$pr_zeta_b),
-                xlim = c(0, 1),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_rs, variables = c("sigma_t")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dlnorm(x,
-                                  meanlog = drm_rs$data$pr_lsigma_t_mu,
-                                  sdlog = drm_rs$data$pr_lsigma_t_sd),
-                xlim = c(0, .5),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
-
-draws(drm_rs, variables = c("xi")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) {
-    y <- - x
-    dnorm(log(y),
-          mean = drm_rs$data$pr_lmxi_mu,
-          sd = drm_rs$data$pr_lmxi_sd) / y
-  },
-  xlim = c(-5, -1e-16),
-  n = 501,
-  inherit.aes = FALSE,
-  color = 2,
-  lwd = 1.2)
-
 ##--- relationships with the environment ----
 
 effects_drm(drm_rs,
             process = "rec",
             variable = "c_stemp") |>
-  plot()
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1))
 
 effects_drm(drm_rs,
             process = "surv",
             variable = "c_btemp") |>
-  plot()
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1))
 
-##--- SDM ----
+effects_drm(drm_surv,
+            process = "surv",
+            variable = "c_btemp") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1))
 
-sdm <-
-  fit_sdm(.data = dat_train,
-          y_col = "dens", ## response variable: density
-          time_col = "year", ## vector of time points
-          site_col = "patch",
-          family = "gamma",
-          seed = 202505,
-          formula_zero = ~ 1 + c_hauls,
-          formula_dens = ~ 1 + c_stemp + I(c_stemp * c_stemp),
-          .priors = list(pr_alpha_a = 4.2, pr_alpha_b = 5.8),
-          ## the model is not converging with `rho_mu = 1`
-          .toggles = list(rho_mu = 1,
-                          ar_re = 1),
-          algo_args = list(parallel_chains = 4))
-
-##--- forecasting ----
+##--- Projections ----
 
 ##--- * DRM ----
 
@@ -456,20 +325,13 @@ proj_surv <- predict(drm_surv,
                      cores = 4) |>
   summary(probs = c(.1, .5, .9))
 
-proj_rs <- predict(drm_surv,
+proj_rs <- predict(drm_rs,
                    new_data = dat_test,
                    past_data = filter(dat_train,
                                       year == max(year)),
                    seed = 125,
                    f_test = f_test,
                    cores = 4) |>
-  summary(probs = c(.1, .5, .9))
-
-proj_sdm <-
-  predict(sdm,
-          new_data = dat_test,
-          seed = 125,
-          cores = 4) |>
   summary(probs = c(.1, .5, .9))
 
 ##--- Viz predicted and observed ----
@@ -491,22 +353,17 @@ fitted_rs <-
   fitted(drm_rs) |>
   summary(probs = c(.1, .5, .9))
 
-fitted_sdm <-
-  fitted(sdm) |>
-  summary(probs = c(.1, .5, .9))
-
 ##--- Figure 2 ----
 
-bind_rows(fitted_sdm, proj_sdm) |>
-  mutate(model = "SDM") |>
-  bind_rows(
-      bind_rows(fitted_rec, proj_rec) |>
-      mutate(model = "DRM (rec)"),
-      bind_rows(fitted_surv, proj_surv) |>
-      mutate(model = "DRM (surv)"),
-      bind_rows(fitted_rs, proj_rs) |>
-      mutate(model = "DRM (rec-surv)")
-  ) |>
+bind_rows(
+    bind_rows(fitted_rec, proj_rec) |>
+    mutate(model = "DRM (rec)"),
+    bind_rows(fitted_surv, proj_surv) |>
+    mutate(model = "DRM (surv)"),
+    bind_rows(fitted_rs, proj_rs) |>
+    mutate(model = "DRM (rec-surv)")
+) |>
+  mutate(patch = as.integer(patch)) |>
   ## filter(model != "DRM (surv)") |>
   ggplot(data = _) +
   geom_vline(xintercept = first_year_forecast,
@@ -534,16 +391,14 @@ ggsave(filename = "overleaf/img/forecast_sf.pdf",
        width = 6,
        height = 7)
 
-bind_rows(fitted_sdm, proj_sdm) |>
-  mutate(model = "SDM") |>
-  bind_rows(
-      bind_rows(fitted_rec, proj_rec) |>
-      mutate(model = "DRM (rec)"),
-      bind_rows(fitted_surv, proj_surv) |>
-      mutate(model = "DRM (surv)"),
-      bind_rows(fitted_rs, proj_rs) |>
-      mutate(model = "DRM (rec-surv)")
-  ) |>
+bind_rows(
+    bind_rows(fitted_rec, proj_rec) |>
+    mutate(model = "DRM (rec)"),
+    bind_rows(fitted_surv, proj_surv) |>
+    mutate(model = "DRM (surv)"),
+    bind_rows(fitted_rs, proj_rs) |>
+    mutate(model = "DRM (rec-surv)")
+) |>
   mutate(patch = as.integer(patch)) |>
   left_join(bind_rows(dat_train, dat_test),
             by = c("patch", "year")) |>
@@ -552,15 +407,15 @@ bind_rows(fitted_sdm, proj_sdm) |>
   mutate(bias = dens - q50) |>
   mutate(rmse = bias * bias) |>
   mutate(is = int_score(dens, l = q10, u = q90, alpha = .2)) |>
-  mutate(cvg = 100 * data.table::between(dens, q10, q90)) |>
+  ## mutate(cvg = 100 * data.table::between(dens, q10, q90)) |>
   ungroup() |>
   group_by(type, model) |>
-  summarise(across(rmse:cvg, mean)) |>
+  ## summarise(across(rmse:cvg, mean)) |>
+  summarise(across(rmse:is, mean)) |>
   ungroup() |>
   rename_all(toupper) |>
   rename("Model" = "MODEL",
-         "IS (80%)" = "IS",
-         "PIC (80%)" = "CVG") |>
+         "IS (80%)" = "IS") |>
   arrange(RMSE) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
