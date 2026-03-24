@@ -173,9 +173,14 @@ mcmc_diag(drm_rec) |>
   print() |>
   summary()
 
-par(mfrow = c(1, 2))
+par(mfrow = c(4, 6))
 plot(drm_rec)
+
+par(mfrow = c(3, 4))
 plot(drm_rec, type = "density")
+
+par(mfrow = c(3, 4))
+plot(drm_rec, type = "trace")
 
 ##--- parameter estimates ----
 
@@ -253,7 +258,12 @@ mcmc_diag(drm_surv) |>
   print() |>
   summary()
 
-plot(drm_surv)
+
+par(mfrow = c(3, 4))
+plot(drm_surv, type = "density")
+
+par(mfrow = c(3, 4))
+plot(drm_surv, type = "trace")
 
 ##--- parameter estimates ----
 
@@ -273,35 +283,17 @@ mcmc_diag(drm_rs) |>
   print() |>
   summary()
 
-par(mfrow = c(4, 2))
-plot(drm_rs)
-plot(drm_surv, type = "density")
+par(mfrow = c(3, 5))
+plot(drm_rs, type = "density")
+
+par(mfrow = c(3, 5))
+plot(drm_rs, type = "trace")
 
 ##--- parameter estimates ----
 
 summary(drm_rs)
 ## specific quantiles
 summary(drm_rs, probs = c(.1, .9))
-
-##--- relationships with the environment ----
-
-effects_drm(drm_rs,
-            process = "rec",
-            variable = "c_stemp") |>
-  plot() +
-  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1))
-
-effects_drm(drm_rs,
-            process = "surv",
-            variable = "c_btemp") |>
-  plot() +
-  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1))
-
-effects_drm(drm_surv,
-            process = "surv",
-            variable = "c_btemp") |>
-  plot() +
-  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1))
 
 ##--- Projections ----
 
@@ -391,6 +383,8 @@ ggsave(filename = "overleaf/img/forecast_sf.pdf",
        width = 6,
        height = 7)
 
+##--- * Table 3 ----
+
 bind_rows(
     bind_rows(fitted_rec, proj_rec) |>
     mutate(model = "DRM (rec)"),
@@ -422,36 +416,18 @@ bind_rows(
                  digits = 2) |>
   print(include.rownames = FALSE)
 
-##--- Viz relationships ----
-
-rec_stuff <- effects_drm(drm_rec, "rec", "c_stemp")
-rec_stuff[[1]] <- rec_stuff[[1]]  + avgs["stemp"]
-rec_fig <- plot(rec_stuff)
-
-surv_stuff <- effects_drm(drm_surv, "surv", "c_btemp")
-surv_stuff[[1]] <- surv_stuff[[1]]  + avgs["btemp"]
-surv_fig <- plot(surv_stuff)
+##--- Relationships with the environment ----
 
 rec_fig <-
-  effects_drm(drm_rec, "rec", "c_stemp") |>
-  transform(stemp = c_stemp + avgs["stemp"]) |>
-  class()
-  ggplot(data = rec_summary,
-         aes(x = stemp,
-             y = m)) +
-  geom_ribbon(aes(ymin = l, ymax = u),
-              fill = "gray50",
-              color = "transparent",
-              linewidth = 1.2) +
-  geom_line(color = "white", linewidth = 1.2) +
+  effects_drm(drm_rs,
+              process = "rec",
+              variable = "c_stemp") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["stemp"], 1),
+                     breaks = c(10, 15, 20, 25) - avgs["stemp"]) +
   theme_bw() +
-  guides(fill = "none") +
-  labs(color = "Model",
-       fill = "Model",
-       x = "SST (in Celsius)",
-       y = "Est. recruitment (per km2)") +
-  theme(legend.position = "inside",
-        legend.position.inside = c(0.175, 0.75))
+  labs(x = "SST (in Celsius)",
+       y = "Est. Recruitment (per km2)")
 
 rec_fig
 
@@ -464,38 +440,20 @@ ggsave(filename = "overleaf/img/recruitment.pdf",
 
 ##--- surv and environment ----
 
-newdata_surv <- data.frame(c_btemp =
-                             seq(from = quantile(dat_train$c_btemp, .05),
-                                 to = quantile(dat_train$c_btemp, .95),
-                                 length.out = 200))
-
-surv_samples <- marg_surv(drm_surv, newdata_surv)
-
-surv_samples <- surv_samples |>
-  mutate(btemp = c_btemp + avgs["btemp"])
-
-surv_summary <-
-  surv_samples |>
-  group_by(btemp) |>
-  summarise(l = quantile(survival, probs = .1),
-            m = median(survival),
-            u = quantile(survival, probs = .9)) |>
-  ungroup()
-
 surv_fig <-
-  ggplot(data = surv_summary,
-         aes(x = btemp,
-             y = m)) +
-  geom_ribbon(aes(ymin = l, ymax = u),
-              fill = "gray50",
-              color = "transparent",
-              linewidth = 1.2) +
-  geom_line(color = "white", linewidth = 1.2) +
+  effects_drm(drm_rs,
+              process = "surv",
+              variable = "c_btemp") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["btemp"], 1),
+                     breaks = c(10, 15, 20, 25) - avgs["btemp"]) +
   theme_bw() +
-  labs(x = "SBT (in Celsius)",
-       y = "Est. survival")
+  labs(x = "SST (in Celsius)",
+       y = "Est. Recruitment (per km2)")
 
 surv_fig
+
+gratio <- 0.5 * (1 + sqrt(5))
 
 ggsave(filename = "overleaf/img/surv.pdf",
        plot = surv_fig,
@@ -505,9 +463,9 @@ ggsave(filename = "overleaf/img/surv.pdf",
 ##--- Figure 3 ----
 ##--- Panel for recruitment and survival ----
 
-rec_fig + surv_fig +
-  plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = 10))
+plot_grid(rec_fig, surv_fig,
+          labels = "AUTO",
+          label_size = 10)
 
 ggsave(filename = "overleaf/img/rec_surv.pdf",
        width = 7,
@@ -516,8 +474,8 @@ ggsave(filename = "overleaf/img/rec_surv.pdf",
 ##--- ** SST that optimizes recruitment ----
 
 betas_rec <-
-  drm_rec$stanfit$draws(variables = "beta_r",
-                         format = "matrix")
+  draws(drm_rec, variables = "beta_r",
+        format = "matrix")
 
 max_quad_x(betas_rec[, 2], betas_rec[, 3],
            offset = avgs["stemp"]) |>
@@ -526,37 +484,9 @@ max_quad_x(betas_rec[, 2], betas_rec[, 3],
 ##--- ** SBT that maximizes surival ----
 
 betas_surv <-
-  drm_surv$stanfit$draws(variables = "beta_s",
-                         format = "matrix")
+  draws(drm_surv, variables = "beta_s",
+        format = "matrix")
 
 max_quad_x(betas_surv[, 2], betas_surv[, 3],
            offset = avgs["btemp"]) |>
   apply(2, quantile, probs = c(.1, .5, .9))
-
-##--- Table 4 ----
-
-for_sdm |>
-  mutate(model = "SDM") |>
-  bind_rows(
-      for_rec |>
-      mutate(model = "DRM (rec)"),
-      for_surv |>
-      mutate(model = "DRM (surv)")
-  ) |>
-  mutate(bias = dens - median) |>
-  mutate(rmse = bias * bias) |>
-  mutate(is = int_score(dens, l = q10, u = q90, alpha = .2)) |>
-  mutate(cvg = 100 * data.table::between(dens, q10, q90)) |>
-  ungroup() |>
-  group_by(model) |>
-  summarise(across(rmse:cvg, mean)) |>
-  ungroup() |>
-  rename_all(toupper) |>
-  rename("Model" = "MODEL",
-         "IS (80%)" = "IS",
-         "PIC (80%)" = "CVG") |>
-  arrange(RMSE) |>
-  print() |>
-  xtable::xtable(caption = "Forecasting skill according to different metrics",
-                 digits = 2) |>
-  print(include.rownames = FALSE)
