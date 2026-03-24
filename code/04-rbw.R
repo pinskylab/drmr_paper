@@ -3,7 +3,7 @@ library(ggplot2)
 library(bayesplot)
 library(sf)
 library(drmr)
-library(patchwork)
+library(cowplot)
 library(cmdstanr)
 
 bayesplot::color_scheme_set(scheme = "mix-pink-teal")
@@ -107,24 +107,12 @@ adj_mat <-
 
 n_ages <- 12
 
-## init_ldens <-
-##   dat_train |>
-##   filter(year < 1985) |>
-##   summarise(dens = sum(area * dens) / sum(area)) |>
-##   pull(dens)
+## algo <- "laplace" ## change the inference method
+## algo_args <- list() ## change inference algorithm defaults
 
-## init_ldens <-
-##   init_ldens *
-##   seq(.9, .1, len = n_ages) / sum(seq(.9, .1, len = n_ages))
-
-## init_ldens <- log(init_ldens[-1])
-
-algo <- "laplace" ## change the inference method
-algo_args <- list() ## change inference algorithm defaults
-
-## algo <- "nuts" ## change the inference method
-## algo_args <- list(parallel_chains = 4,
-##                   chains = 4) ## change inference algorithm defaults
+algo <- "nuts" ## change the inference method
+algo_args <- list(parallel_chains = 4,
+                  chains = 4) ## change inference algorithm defaults
 
 drm_rec <-
   fit_drm(.data = dat_train,
@@ -135,15 +123,15 @@ drm_rec <-
           seed = 202505,
           formula_zero = ~ 1 + n_routes,
           formula_rec = ~ 1 + c_tavg + I(c_tavg * c_tavg),
-          formula_surv = ~ 1 + c_lat + c_lon,
+          formula_surv = ~ 1,
           n_ages = 12,
           adj_mat = adj_mat, ## A matrix for movement routine
-          init_data = init_ldens,
+          ## init_data = init_ldens,
           ages_movement = c(0, 0,
                             rep(1, n_ages - 4),
                             0, 0), ## ages allowed to move
-          .toggles = list(ar_re = "none",
-                          sp_re = "none",
+          .toggles = list(ar_re = "rec",
+                          sp_re = "surv",
                           movement = 1,
                           est_surv = 1,
                           est_init = 0,
@@ -155,54 +143,83 @@ drm_rec <-
           algo_args = algo_args)
 ##--- Convergence & estimates ----
 
-## all rhat's look good (no larger than 1.01)
+mcmc_diag(drm_rec) |>
+  print() |>
+  summary()
+
+par(mfrow = c(4, 6))
+plot(drm_rec)
+
+par(mfrow = c(3, 4))
+plot(drm_rec, type = "density")
+
+par(mfrow = c(3, 4))
+plot(drm_rec, type = "trace")
+
+##--- parameter estimates ----
+
 summary(drm_rec)
-
-## the different chains are in agreement and converging.
-draws(drm_rec, variables = c("beta_r", "beta_t")) |>
-  mcmc_trace()
-
-draws(drm_rec, variables = c("beta_r", "beta_t")) |>
-  mcmc_dens()
-
-draws(drm_rec,
-      variables = c("zeta", "phi")) |>
-  mcmc_trace(facet_args = list(labeller = ggplot2::label_parsed))
-
-draws(drm_rec,
-      variables = c("zeta", "phi")) |>
-  mcmc_dens(facet_args = list(labeller = ggplot2::label_parsed))
+## specific quantiles
+summary(drm_rec, probs = c(.1, .9))
 
 ##--- comparing some priors and posteriors ----
 
-drm_rec$stanfit$draws(variables = c("phi")) |>
-  mcmc_dens_overlay() +
-  stat_function(fun = \(x) dgamma(x, shape = 1, rate = .1),
-                xlim = c(0, 3),
-                n = 501,
-                inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2)
+par(mfrow = c(1, 1))
 
-drm_rec$stanfit$draws(variables = c("alpha")) |>
+##--- * Base R ----
+plot(drm_rec, variables = "phi", type = "density")
+curve(dgamma(x, 
+             shape = drm_rec$data$pr_phi_a, 
+             rate = drm_rec$data$pr_phi_b), 
+      add = TRUE, 
+      lty = 2,
+      lwd = 2)
+
+plot(drm_rec, variables = "alpha", type = "density")
+curve(dbeta(x,
+            shape1 = drm_rec$data$pr_alpha_a,
+            shape2 = drm_rec$data$pr_alpha_b), 
+      add = TRUE, 
+      lty = 2,
+      lwd = 2)
+
+##--- * ggplot ----
+
+draws(drm_rec, variables = c("zeta")) |>
   mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x, shape1 = 4.2, shape2 = 5.8),
+  stat_function(fun = \(x) dbeta(x,
+                                 shape1 = drm_rec$data$pr_zeta_a,
+                                 shape2 = drm_rec$data$pr_zeta_b),
                 xlim = c(0, 1),
                 n = 501,
                 inherit.aes = FALSE,
                 color = 2,
-                lwd = 1.2)
+                linewidth = 1.2)
 
-drm_rec$stanfit$draws(variables = c("zeta")) |>
+draws(drm_rec, variables = c("sigma_t")) |>
   mcmc_dens_overlay() +
-  stat_function(fun = \(x) dbeta(x, shape1 = 7, shape2 = 3),
-                xlim = c(0, 1),
+  stat_function(fun = \(x) dlnorm(x,
+                                  meanlog = drm_rec$data$pr_lsigma_t_mu,
+                                  sdlog = drm_rec$data$pr_lsigma_t_sd),
+                xlim = c(0, .5),
                 n = 501,
                 inherit.aes = FALSE,
                 color = 2,
                 lwd = 1.2)
 
-drm_rec$stanfit$draws(variables = c("xi")) |>
+draws(drm_rec, variables = c("sigma_s")) |>
+  mcmc_dens_overlay() +
+  stat_function(fun = \(x) dlnorm(x,
+                                  meanlog = drm_rec$data$pr_lsigma_s_mu,
+                                  sdlog = drm_rec$data$pr_lsigma_s_sd),
+                xlim = c(0, .5),
+                n = 501,
+                inherit.aes = FALSE,
+                color = 2,
+                lwd = 1.2
+)
+
+draws(drm_rec, variables = c("xi")) |>
   mcmc_dens_overlay() +
   stat_function(fun = \(x) {
     y <- - x
@@ -210,91 +227,56 @@ drm_rec$stanfit$draws(variables = c("xi")) |>
           mean = drm_rec$data$pr_lmxi_mu,
           sd = drm_rec$data$pr_lmxi_sd) / y
   },
-  xlim = c(-4, -1e-16),
+  xlim = c(-5, -1e-16),
   n = 501,
   inherit.aes = FALSE,
   color = 2,
   lwd = 1.2)
 
-##--- * Survival ----
+##--- DRM Survival ----
 
 drm_surv <-
-  fit_drm(.data = dat_train,
-          y_col = "dens", ## response variable: density
-          time_col = "year", ## vector of time points
-          site_col = "id",
-          family = "gamma",
-          seed = 202505,
-          formula_zero = ~ 1 + n_routes,
-          formula_rec = ~ 1 + c_lon + c_lat,
-          formula_surv = ~ 1 + c_tavg + I(c_tavg * c_tavg),
-          n_ages = n_ages,
-          adj_mat = adj_mat, ## A matrix for movement routine
-          init_data = init_ldens,
-          ages_movement = c(0, 0,
-                            rep(1, n_ages - 4),
-                            0, 0), ## ages allowed to move
-          .toggles = list(ar_re = "rec",
-                          est_surv = 1,
-                          movement = 1,
-                          est_init = 0,
-                          minit = 1),
-          .priors = list(pr_phi_a = 1, pr_phi_b = .1,
-                         pr_alpha_a = 4.2, pr_alpha_b = 5.8,
-                         pr_zeta_a = 7, pr_zeta_b = 3),
-          algo = algo,
-          algo_args = algo_args)
+  update(drm_rec,
+         formula_rec = ~ 1,
+         formula_surv = ~ 1 + c_tavg + I(c_tavg * c_tavg))
 
-##--- Convergence & estimates ----
+##--- Convergence check ----
 
-## all rhat's look good (no larger than 1.01)
+mcmc_diag(drm_surv) |>
+  print() |>
+  summary()
+
+par(mfrow = c(3, 4))
+plot(drm_surv, type = "density")
+
+par(mfrow = c(3, 4))
+plot(drm_surv, type = "trace")
+
+##--- parameter estimates ----
+
 summary(drm_surv)
+## specific quantiles
+summary(drm_surv, probs = c(.1, .9))
 
-## the different chains are in agreement and converging.
-draws(drm_surv, variables = c("beta_s", "beta_t")) |>
-  mcmc_trace()
-
-draws(drm_surv, variables = c("beta_s", "beta_t")) |>
-  mcmc_dens()
-
-##--- SDM ----
-
-sdm <-
-  fit_sdm(.data = dat_train,
-          y_col = "dens", ## response variable: density
-          time_col = "year", ## vector of time points
-          site_col = "id",
-          family = "lognormal",
-          seed = 202505,
-          formula_zero = ~ 1 + n_routes,
-          formula_dens = ~ 1 + c_tavg + I(c_tavg * c_tavg) + c_lon + c_lat,
-          .toggles = list(rho_mu = 0),
-          algo = algo,
-          algo_args = algo_args)
-
-##--- forecasting ----
+##--- Projections ----
 
 ##--- * DRM ----
 
-forecast_rec <- predict(object = drm_rec,
-                        new_data = dat_test,
-                        past_data = filter(dat_train,
-                                           year == max(year)),
-                        seed = 125,
-                        cores = 4)
+proj_rec <- predict(drm_rec,
+                    new_data = dat_test,
+                    past_data = filter(dat_train,
+                                       year == max(year)),
+                    seed = 125,
+                    cores = 4) |>
+  summary(probs = c(.1, .5, .9))
 
-forecast_surv <- predict(object = drm_surv,
-                         new_data = dat_test,
-                         past_data = filter(dat_train,
-                                            year == max(year)),
-                         seed = 125,
-                         cores = 4)
-
-forecast_sdm <-
-  predict_sdm(object = sdm,
-              new_data = dat_test,
-              seed = 125,
-              cores = 4)
+proj_surv <- predict(drm_surv,
+                     new_data = dat_test,
+                     past_data = filter(dat_train,
+                                        year == max(year)),
+                     seed = 125,
+                     cores = 4) |>
+  summary(probs = c(.1, .5, .9))
 
 ##--- Viz predicted and observed ----
 
@@ -305,202 +287,154 @@ u_t <- 1 - .5 * tails
 
 fitted_rec <-
   fitted(drm_rec) |>
-  summary()
-
-for_rec <-
-  summary(forecast_rec)
+  summary(probs = c(.1, .5, .9))
 
 fitted_surv <-
   fitted(drm_surv) |>
-  summary()
+  summary(probs = c(.1, .5, .9))
 
-for_surv <-
-  summary(forecast_surv)
+##--- Figure not included in the manuscript ----
 
-fitted_sdm <-
-  fitted(sdm) |>
-  summary()
+set.seed(2026)
+sample_ids <- sample(unique(my_dt$id), 10)
 
-for_sdm <-
-  summary(forecast_sdm)
-
-##--- Table 4 ----
-
-for_sdm |>
-  mutate(model = "SDM") |>
-  bind_rows(
-      for_rec |>
-      mutate(model = "DRM (rec)"),
-      for_surv |>
-      mutate(model = "DRM (surv)")
-  ) |>
+bind_rows(
+    bind_rows(fitted_rec, proj_rec) |>
+    mutate(model = "DRM (rec)"),
+    bind_rows(fitted_surv, proj_surv) |>
+    mutate(model = "DRM (surv)")
+) |>
   mutate(id = as.integer(id)) |>
-  left_join(dat_test, by = c("id", "year")) |>
+  filter(id %in% sample_ids) |>
+  ## filter(model != "DRM (surv)") |>
+  ggplot(data = _) +
+  geom_vline(xintercept = first_year_forecast,
+             lty = 2) +
+  geom_ribbon(aes(x = year,
+                  ymin = q10, ymax = q90,
+                  fill = model,
+                  color = model),
+              alpha = .4) +
+  geom_line(aes(x = year, y = q50, color = model)) +
+  geom_point(data = filter(bind_rows(dat_train, dat_test),
+                           id %in% sample_ids),
+             aes(x = year, y = dens), size = .5) +
+  facet_grid(id ~ model, scales = "free_y") +
+  scale_y_continuous(breaks = scales::trans_breaks(identity, identity,
+                                                   n = 3),
+                     trans = "log1p") +
+  theme_bw() +
+  guides(color = "none",
+         fill = "none") +
+  labs(y = "Density (in hundreds of individuals per square-km)",
+       x = "Year") +
+  theme(strip.background = element_rect(fill = "white"))
+
+ggsave(filename = "overleaf/img/forecast_rbw.pdf",
+       width = 6,
+       height = 7)
+
+##--- * Table 3 ----
+
+bind_rows(
+    bind_rows(fitted_rec, proj_rec) |>
+    mutate(model = "DRM (rec)"),
+    bind_rows(fitted_surv, proj_surv) |>
+    mutate(model = "DRM (surv)")
+) |>
+  mutate(id = as.integer(id)) |>
+  left_join(bind_rows(dat_train, dat_test),
+            by = c("id", "year")) |>
+  mutate(type = ifelse(year < first_year_forecast, "in-sample",
+                       "out-of-sample")) |>
   mutate(bias = dens - q50) |>
   mutate(rmse = bias * bias) |>
-  mutate(is = int_score(dens, l = q5, u = q95, alpha = .2)) |>
-  mutate(cvg = 100 * data.table::between(dens, q5, q95)) |>
+  mutate(is = int_score(dens, l = q10, u = q90, alpha = .2)) |>
+  ## mutate(cvg = 100 * data.table::between(dens, q10, q90)) |>
   ungroup() |>
-  group_by(model) |>
-  summarise(across(rmse:cvg, mean)) |>
+  group_by(type, model) |>
+  ## summarise(across(rmse:cvg, mean)) |>
+  summarise(across(rmse:is, mean)) |>
   ungroup() |>
   rename_all(toupper) |>
   rename("Model" = "MODEL",
-         "IS (80%)" = "IS",
-         "PIC (80%)" = "CVG") |>
+         "IS (80%)" = "IS") |>
   arrange(RMSE) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
                  digits = 2) |>
   print(include.rownames = FALSE)
 
-##--- Vuz firecast ----
-
-set.seed(2025)
-ids <- sample(seq_len(max(dat_train$id)),
-              size = 5)
-
-bind_rows(fitted_sdm, for_sdm) |>
-  mutate(model = "SDM") |>
-  bind_rows(
-      bind_rows(fitted_rec, for_rec) |>
-      mutate(model = "DRM (rec)"),
-      bind_rows(fitted_surv, for_surv) |>
-      mutate(model = "DRM (surv)")
-  ) |>
-  ## filter(model != "DRM (surv)") |>
-  filter(id %in% ids) |>
-  mutate(id = as.integer(id)) |>
-  left_join(dat_test, by = c("id", "year")) |>
-  ggplot(data = _) +
-  geom_vline(xintercept = first_year_forecast,
-             lty = 2) +
-  geom_ribbon(aes(x = year,
-                  ymin = q5, ymax = q95,
-                  fill = model,
-                  color = model),
-              alpha = .4) +
-  geom_line(aes(x = year, y = q50, color = model)) +
-  geom_point(aes(x = year, y = dens)) +
-  facet_grid(id ~ model) +
-  guides(color = "none",
-         fill = "none") +
-  labs(x = "Year",
-       y = "Density") +
-  scale_y_continuous(breaks = scales::trans_breaks(identity, identity,
-                                                   n = 3),
-                     trans = "log1p") +
-  theme_bw()
-
-##--- Viz relationships ----
-
-rec_samples <- marg(drm_rec, process = "rec",
-                    variable = "c_tavg")
-
-plot(rec_samples)
-
-surv_samples <- marg(drm_surv, process = "surv",
-                     variable = "c_tavg")
-
-plot(surv_samples)
-
-
-rec_samples <- rec_samples |>
-  mutate(stemp = c_tavg + avgs["tavg"])
-
-rec_summary <-
-  rec_samples |>
-  group_by(stemp) |>
-  summarise(ll = quantile(recruitment, probs = .05),
-            l = quantile(recruitment, probs = .1),
-            m = median(recruitment),
-            u = quantile(recruitment, probs = .9),
-            uu = quantile(recruitment, probs = .95)) |>
-  ungroup() |>
-  mutate(model = "drm_rec")
+##--- Relationships with the environment ----
 
 rec_fig <-
-  ggplot(data = rec_summary,
-         aes(x = stemp,
-             y = m)) +
-  geom_ribbon(aes(ymin = l, ymax = u),
-              fill = "gray50",
-              color = "transparent",
-              linewidth = 1.2) +
-  geom_line(color = "white", linewidth = 1.2) +
+  effects_drm(drm_rec,
+              process = "rec",
+              variable = "c_tavg") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["tavg"], 1),
+                     breaks = c(10, 15, 20, 25) - avgs["tavg"]) +
   theme_bw() +
-  guides(fill = "none") +
-  labs(color = "Model",
-       fill = "Model",
-       x = "Air temperature (in Celsius)",
-       y = "Est. recruitment (per km2)") +
-  theme(legend.position = "inside",
-        legend.position.inside = c(0.175, 0.75))
+  labs(x = "Averate air-temperature (in C)",
+       y = "Est. Recruitment (per km2)")
 
 rec_fig
 
 gratio <- 0.5 * (1 + sqrt(5))
 
+ggsave(filename = "overleaf/img/recruitment_rbw.pdf",
+       plot = rec_fig,
+       width = 6,
+       height = 6 / gratio)
+
 ##--- surv and environment ----
 
-newdata_surv <- data.frame(c_tavg =
-                             seq(from = quantile(dat_train$c_tavg, .05),
-                                 to = quantile(dat_train$c_tavg, .95),
-                                 length.out = 200),
-                           c_lon = 0,
-                           c_lat = 0)
-
-surv_samples <- marg_surv(drm_surv, newdata_surv)
-
-surv_samples <- surv_samples |>
-  mutate(btemp = c_tavg + avgs["tavg"])
-
-surv_summary <-
-  surv_samples |>
-  group_by(btemp) |>
-  summarise(ll = quantile(survival, probs = .05),
-            l = quantile(survival, probs = .1),
-            m = median(survival),
-            u = quantile(survival, probs = .9),
-            uu = quantile(survival, probs = .95)) |>
-  ungroup()
-
 surv_fig <-
-  ggplot(data = surv_summary,
-         aes(x = btemp,
-             y = m)) +
-  geom_ribbon(aes(ymin = l, ymax = u),
-              fill = "gray50",
-              color = "transparent",
-              linewidth = 1.2) +
-  geom_line(color = "white", linewidth = 1.2) +
+  effects_drm(drm_surv,
+              process = "surv",
+              variable = "c_tavg") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["tavg"], 1),
+                     breaks = c(10, 15, 20, 25) - avgs["tavg"]) +
   theme_bw() +
-  labs(x = "Air temperature (in Celsius)",
-       y = "Est. survival")
+  labs(x = "Averate air-temperature (in C)",
+       y = "Est. survival rates")
 
 surv_fig
 
+gratio <- 0.5 * (1 + sqrt(5))
+
+ggsave(filename = "overleaf/img/surv_rbw.pdf",
+       plot = surv_fig,
+       width = 6,
+       height = 6 / gratio)
+
+##--- Figure 3 ----
 ##--- Panel for recruitment and survival ----
 
-rec_fig + surv_fig +
-  plot_annotation(tag_levels = "A") &
-  theme(plot.tag = element_text(size = 10))
+plot_grid(rec_fig, surv_fig,
+          labels = "AUTO",
+          label_size = 10)
 
-##--- * temperature that optimizes recruitment ----
+ggsave(filename = "overleaf/img/rec_surv_rbw.pdf",
+       width = 7,
+       height = .75 * 7 / gratio)
+
+##--- ** SST that optimizes recruitment ----
 
 betas_rec <-
-  drm_rec$stanfit$draws(variables = "beta_r",
-                         format = "matrix")
+  draws(drm_rec, variables = "beta_r",
+        format = "matrix")
 
 max_quad_x(betas_rec[, 2], betas_rec[, 3],
            offset = avgs["tavg"]) |>
   apply(2, quantile, probs = c(.1, .5, .9))
 
-##--- ** temperature that maximizes surival ----
+##--- ** SBT that maximizes surival ----
 
 betas_surv <-
-  drm_surv$stanfit$draws(variables = "beta_s",
-                         format = "matrix")
+  draws(drm_surv, variables = "beta_s",
+        format = "matrix")
 
 max_quad_x(betas_surv[, 2], betas_surv[, 3],
            offset = avgs["tavg"]) |>

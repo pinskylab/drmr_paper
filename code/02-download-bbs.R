@@ -4,8 +4,6 @@ library(dplyr)
 
 ##--- selecting species ----
 
-sps <- readr::read_csv("data/birds/martins2024significant.csv")
-
 fetch_bbs_data(level = "stop")
 
 species <- "Red-bellied Woodpecker"

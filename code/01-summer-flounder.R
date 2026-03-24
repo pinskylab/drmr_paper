@@ -190,6 +190,8 @@ summary(drm_rec, probs = c(.1, .9))
 
 ##--- comparing some priors and posteriors ----
 
+par(mfrow = c(1, 1))
+
 ##--- * Base R ----
 plot(drm_rec, variables = "phi", type = "density")
 curve(dgamma(x, 
@@ -257,7 +259,6 @@ drm_surv <-
 mcmc_diag(drm_surv) |>
   print() |>
   summary()
-
 
 par(mfrow = c(3, 4))
 plot(drm_surv, type = "density")
@@ -419,7 +420,7 @@ bind_rows(
 ##--- Relationships with the environment ----
 
 rec_fig <-
-  effects_drm(drm_rs,
+  effects_drm(drm_rec,
               process = "rec",
               variable = "c_stemp") |>
   plot() +
@@ -441,7 +442,7 @@ ggsave(filename = "overleaf/img/recruitment.pdf",
 ##--- surv and environment ----
 
 surv_fig <-
-  effects_drm(drm_rs,
+  effects_drm(drm_surv,
               process = "surv",
               variable = "c_btemp") |>
   plot() +
@@ -449,7 +450,7 @@ surv_fig <-
                      breaks = c(10, 15, 20, 25) - avgs["btemp"]) +
   theme_bw() +
   labs(x = "SST (in Celsius)",
-       y = "Est. Recruitment (per km2)")
+       y = "Est. Survival Rates")
 
 surv_fig
 

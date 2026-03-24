@@ -9,23 +9,23 @@ paper, "`drmr`: A Bayesian approach to Dynamic Range Models in R."
 Before running any analysis, please follow these steps to set up the required
 environment.
 
-1.  **Install CmdStan**: This project depends on `CmdStan` (version \>=
-    2.36). Please install it and the R package `cmdstanr` by following the
-    [official
-    instructions](https://mc-stan.org/cmdstanr/articles/cmdstanr.html).
+1. **Install CmdStan**: This project depends on `CmdStan` (version \>=
+   2.36). Please install it and the R package `cmdstanr` by following the
+   [official
+   instructions](https://mc-stan.org/cmdstanr/articles/cmdstanr.html).
 
-2.  **Restore R Environment**: This repository uses `renv` to manage R package
-    dependencies (including the version of `drmr` in the `pkg/` directory). To
-    install all required packages, open this project in R and run:y
-    ```r
-    renv::restore()
-    ```
+2. **Restore R Environment**: This repository uses `renv` to manage R package
+   dependencies (including the version of `drmr` in the `pkg/` directory). To
+   install all required packages, open this project in R and run:y
+   ```r
+   renv::restore()
+   ```
 
-3.  **System Dependencies (Optional)**: If you wish to regenerate the raw
-    environmental data for the red-bellied woodpecker case study, you must also
-    have the `bash` interface to [GDAL](https://gdal.org/en/stable/) set up in
-    your system. This is not required if you use the provided, pre-processed
-    data.
+3. **System Dependencies (Optional)**: If you wish to regenerate the raw
+   environmental data for the red-bellied woodpecker case study, you must also
+   have the `bash` interface to [GDAL](https://gdal.org/en/stable/) set up in
+   your system. This is not required if you use the provided, pre-processed
+   data.
 
 
 ### Reproducing the Results
@@ -36,13 +36,13 @@ The analyses for the two case studies can be run using the scripts in the
 #### Case Study 1: Summer Flounder
 
 To reproduce the full analysis for the summer flounder, run the
-`code/01-summer-flounder.R` script.y
+`code/01-summer-flounder.R` script.
 
 
 #### Case Study 2: Red-bellied Woodpecker
 
 For convenience, the final processed dataset for this study is already provided
-at `data/birds/processed.parquet`.
+at `data/birds/processed.rds`.
 
   * **To run the analysis using the provided data**, execute the `code/04-rbw.R`
     script.
