@@ -33,7 +33,7 @@ polygons |>
 ##--- splitting data for validation ----
 
 ## reserving 5 years for forecast assessment
-first_year_forecast <- max(my_dt$year) - 7
+first_year_forecast <- max(my_dt$year) - 5
 
 ## "year to id"
 first_id_forecast <-

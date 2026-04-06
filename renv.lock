@@ -815,7 +815,7 @@
     },
     "drmr": {
       "Package": "drmr",
-      "Version": "1.0.0",
+      "Version": "1.0.1",
       "Source": "Local",
       "Type": "Package",
       "Title": "An R package with pre-compiled cmdstan code for dynamic range models",
@@ -862,7 +862,7 @@
       "Author": "Lucas da Cunha Godoy [aut, cre] (ORCID: <https://orcid.org/0000-0003-4265-972X>)",
       "Maintainer": "Lucas da Cunha Godoy <lcgodoy@duck.com>",
       "RemoteType": "local",
-      "RemoteUrl": "pkg/drmr_1.0.0.tar.gz",
+      "RemoteUrl": "pkg/drmr_1.0.1.tar.gz",
       "Remotes": "wlandau/instantiate"
     },
     "e1071": {
@@ -1509,48 +1509,6 @@
       "URL": "http://optimizer.r-forge.r-project.org/",
       "NeedsCompilation": "no",
       "Repository": "CRAN"
-    },
-    "patchwork": {
-      "Package": "patchwork",
-      "Version": "1.2.0",
-      "Source": "Repository",
-      "Type": "Package",
-      "Title": "The Composer of Plots",
-      "Authors@R": "person(given = \"Thomas Lin\", family = \"Pedersen\", role = c(\"cre\", \"aut\"), email = \"thomasp85@gmail.com\", comment = c(ORCID = \"0000-0002-5147-4711\"))",
-      "Maintainer": "Thomas Lin Pedersen <thomasp85@gmail.com>",
-      "Description": "The 'ggplot2' package provides a strong API for sequentially  building up a plot, but does not concern itself with composition of multiple plots. 'patchwork' is a package that expands the API to allow for  arbitrarily complex composition of plots by, among others, providing  mathematical operators for combining multiple plots. Other packages that try  to address this need (but with a different approach) are 'gridExtra' and  'cowplot'.",
-      "License": "MIT + file LICENSE",
-      "Encoding": "UTF-8",
-      "Imports": [
-        "ggplot2 (>= 3.0.0)",
-        "gtable",
-        "grid",
-        "stats",
-        "grDevices",
-        "utils",
-        "graphics",
-        "rlang",
-        "cli"
-      ],
-      "RoxygenNote": "7.2.3",
-      "URL": "https://patchwork.data-imaginist.com, https://github.com/thomasp85/patchwork",
-      "BugReports": "https://github.com/thomasp85/patchwork/issues",
-      "Suggests": [
-        "knitr",
-        "rmarkdown",
-        "gridGraphics",
-        "gridExtra",
-        "ragg",
-        "testthat (>= 2.1.0)",
-        "vdiffr",
-        "covr",
-        "png"
-      ],
-      "VignetteBuilder": "knitr",
-      "Config/Needs/website": "gifski",
-      "NeedsCompilation": "no",
-      "Author": "Thomas Lin Pedersen [cre, aut] (<https://orcid.org/0000-0002-5147-4711>)",
-      "Repository": "RSPM"
     },
     "pillar": {
       "Package": "pillar",

@@ -89,10 +89,6 @@ cores <- 4
 adj_mat <- gen_adj(st_buffer(st_geometry(polygons),
                              dist = 2500))
 
-## row-standardized matrix
-adj_mat <-
-  t(apply(adj_mat, 1, \(x) x / (sum(x))))
-
 ## instantaneous fishing mortality rates
 fmat <-
   system.file("fmat.rds", package = "drmr") |>
@@ -184,7 +180,8 @@ plot(drm_rec, type = "trace")
 
 ##--- parameter estimates ----
 
-summary(drm_rec)
+summary(drm_rec) |>
+  custom_print()
 ## specific quantiles
 summary(drm_rec, probs = c(.1, .9))
 
@@ -402,10 +399,8 @@ bind_rows(
   mutate(bias = dens - q50) |>
   mutate(rmse = bias * bias) |>
   mutate(is = int_score(dens, l = q10, u = q90, alpha = .2)) |>
-  ## mutate(cvg = 100 * data.table::between(dens, q10, q90)) |>
   ungroup() |>
   group_by(type, model) |>
-  ## summarise(across(rmse:cvg, mean)) |>
   summarise(across(rmse:is, mean)) |>
   ungroup() |>
   rename_all(toupper) |>
@@ -420,7 +415,7 @@ bind_rows(
 ##--- Relationships with the environment ----
 
 rec_fig <-
-  effects_drm(drm_rec,
+  effects_drm(drm_rs,
               process = "rec",
               variable = "c_stemp") |>
   plot() +
@@ -442,7 +437,7 @@ ggsave(filename = "overleaf/img/recruitment.pdf",
 ##--- surv and environment ----
 
 surv_fig <-
-  effects_drm(drm_surv,
+  effects_drm(drm_rs,
               process = "surv",
               variable = "c_btemp") |>
   plot() +
@@ -475,7 +470,7 @@ ggsave(filename = "overleaf/img/rec_surv.pdf",
 ##--- ** SST that optimizes recruitment ----
 
 betas_rec <-
-  draws(drm_rec, variables = "beta_r",
+  draws(drm_rs, variables = "beta_r",
         format = "matrix")
 
 max_quad_x(betas_rec[, 2], betas_rec[, 3],
@@ -485,7 +480,7 @@ max_quad_x(betas_rec[, 2], betas_rec[, 3],
 ##--- ** SBT that maximizes surival ----
 
 betas_surv <-
-  draws(drm_surv, variables = "beta_s",
+  draws(drm_rs, variables = "beta_s",
         format = "matrix")
 
 max_quad_x(betas_surv[, 2], betas_surv[, 3],
