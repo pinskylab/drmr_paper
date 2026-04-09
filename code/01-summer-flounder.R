@@ -180,8 +180,7 @@ plot(drm_rec, type = "trace")
 
 ##--- parameter estimates ----
 
-summary(drm_rec) |>
-  custom_print()
+summary(drm_rec)
 ## specific quantiles
 summary(drm_rec, probs = c(.1, .9))
 
@@ -304,7 +303,7 @@ proj_rec <- predict(drm_rec,
                     seed = 125,
                     f_test = f_test,
                     cores = 4) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 proj_surv <- predict(drm_surv,
                      new_data = dat_test,
@@ -313,7 +312,7 @@ proj_surv <- predict(drm_surv,
                      seed = 125,
                      f_test = f_test,
                      cores = 4) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 proj_rs <- predict(drm_rs,
                    new_data = dat_test,
@@ -322,7 +321,7 @@ proj_rs <- predict(drm_rs,
                    seed = 125,
                    f_test = f_test,
                    cores = 4) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 ##--- Viz predicted and observed ----
 
@@ -333,17 +332,23 @@ u_t <- 1 - .5 * tails
 
 fitted_rec <-
   fitted(drm_rec) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 fitted_surv <-
   fitted(drm_surv) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 fitted_rs <-
   fitted(drm_rs) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 ##--- Figure 2 ----
+
+aux_fig <-
+  bind_rows(dat_train, dat_test) |>
+  mutate(patch = factor(as.integer(patch),
+                        levels = rev(unique(as.integer(patch)))))
+  
 
 bind_rows(
     bind_rows(fitted_rec, proj_rec) |>
@@ -353,20 +358,21 @@ bind_rows(
     bind_rows(fitted_rs, proj_rs) |>
     mutate(model = "DRM (rec-surv)")
 ) |>
-  mutate(patch = as.integer(patch)) |>
+  mutate(patch = factor(as.integer(patch),
+                        levels = rev(unique(as.integer(patch))))) |>
   ## filter(model != "DRM (surv)") |>
   ggplot(data = _) +
   geom_vline(xintercept = first_year_forecast,
              lty = 2) +
   geom_ribbon(aes(x = year,
-                  ymin = q10, ymax = q90,
+                  ymin = q5, ymax = q95,
                   fill = model,
                   color = model),
               alpha = .4) +
   geom_line(aes(x = year, y = q50, color = model)) +
-  geom_point(data = bind_rows(dat_train, dat_test),
+  geom_point(data = aux_fig,
              aes(x = year, y = dens), size = .5) +
-  facet_grid(patch ~ model, scales = "free_y") +
+  facet_grid(rows = patch ~ model, scales = "free_y") +
   scale_y_continuous(breaks = scales::trans_breaks(identity, identity,
                                                    n = 3),
                      trans = "log1p") +
@@ -398,14 +404,14 @@ bind_rows(
                        "out-of-sample")) |>
   mutate(bias = dens - q50) |>
   mutate(rmse = bias * bias) |>
-  mutate(is = int_score(dens, l = q10, u = q90, alpha = .2)) |>
+  mutate(is = int_score(dens, l = q5, u = q95, alpha = .1)) |>
   ungroup() |>
   group_by(type, model) |>
   summarise(across(rmse:is, mean)) |>
   ungroup() |>
   rename_all(toupper) |>
   rename("Model" = "MODEL",
-         "IS (80%)" = "IS") |>
+         "IS (90%)" = "IS") |>
   arrange(RMSE) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
@@ -475,7 +481,7 @@ betas_rec <-
 
 max_quad_x(betas_rec[, 2], betas_rec[, 3],
            offset = avgs["stemp"]) |>
-  apply(2, quantile, probs = c(.1, .5, .9))
+  apply(2, quantile, probs = c(.05, .5, .95))
 
 ##--- ** SBT that maximizes surival ----
 
@@ -485,4 +491,4 @@ betas_surv <-
 
 max_quad_x(betas_surv[, 2], betas_surv[, 3],
            offset = avgs["btemp"]) |>
-  apply(2, quantile, probs = c(.1, .5, .9))
+  apply(2, quantile, probs = c(.05, .5, .95))

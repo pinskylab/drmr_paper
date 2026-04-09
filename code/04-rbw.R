@@ -268,7 +268,7 @@ proj_rec <- predict(drm_rec,
                                        year == max(year)),
                     seed = 125,
                     cores = 4) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 proj_surv <- predict(drm_surv,
                      new_data = dat_test,
@@ -276,22 +276,22 @@ proj_surv <- predict(drm_surv,
                                         year == max(year)),
                      seed = 125,
                      cores = 4) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 ##--- Viz predicted and observed ----
 
-ci_mass <- .8
+ci_mass <- .9
 tails <- 1 - ci_mass
 l_t <- tails * .5
 u_t <- 1 - .5 * tails
 
 fitted_rec <-
   fitted(drm_rec) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 fitted_surv <-
   fitted(drm_surv) |>
-  summary(probs = c(.1, .5, .9))
+  summary(probs = c(.05, .5, .95))
 
 ##--- Figure not included in the manuscript ----
 
@@ -311,7 +311,7 @@ bind_rows(
   geom_vline(xintercept = first_year_forecast,
              lty = 2) +
   geom_ribbon(aes(x = year,
-                  ymin = q10, ymax = q90,
+                  ymin = q5, ymax = q95,
                   fill = model,
                   color = model),
               alpha = .4) +
@@ -349,16 +349,14 @@ bind_rows(
                        "out-of-sample")) |>
   mutate(bias = dens - q50) |>
   mutate(rmse = bias * bias) |>
-  mutate(is = int_score(dens, l = q10, u = q90, alpha = .2)) |>
-  ## mutate(cvg = 100 * data.table::between(dens, q10, q90)) |>
+  mutate(is = int_score(dens, l = q5, u = q95, alpha = .2)) |>
   ungroup() |>
   group_by(type, model) |>
-  ## summarise(across(rmse:cvg, mean)) |>
   summarise(across(rmse:is, mean)) |>
   ungroup() |>
   rename_all(toupper) |>
   rename("Model" = "MODEL",
-         "IS (80%)" = "IS") |>
+         "IS (90%)" = "IS") |>
   arrange(RMSE) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
@@ -428,7 +426,7 @@ betas_rec <-
 
 max_quad_x(betas_rec[, 2], betas_rec[, 3],
            offset = avgs["tavg"]) |>
-  apply(2, quantile, probs = c(.1, .5, .9))
+  apply(2, quantile, probs = c(.05, .5, .95))
 
 ##--- ** SBT that maximizes surival ----
 
@@ -438,4 +436,4 @@ betas_surv <-
 
 max_quad_x(betas_surv[, 2], betas_surv[, 3],
            offset = avgs["tavg"]) |>
-  apply(2, quantile, probs = c(.1, .5, .9))
+  apply(2, quantile, probs = c(.05, .5, .95))
