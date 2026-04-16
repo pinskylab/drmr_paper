@@ -450,7 +450,7 @@ surv_fig <-
   scale_x_continuous(labels = \(x) round(x + avgs["btemp"], 1),
                      breaks = c(10, 15, 20, 25) - avgs["btemp"]) +
   theme_bw() +
-  labs(x = "SST (in Celsius)",
+  labs(x = "SBT (in Celsius)",
        y = "Est. Survival Rates")
 
 surv_fig
