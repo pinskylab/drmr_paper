@@ -44,7 +44,7 @@ dt_aux <-
   transform(atanh = normal_tanh(alpha, sd = 0.25),
             pc    = pc_base0(alpha, 0.9, 0.05),
             tbeta = trans_beta(alpha, 0.5, 0.5),
-            beta  = ifelse(alpha >= 0, dbeta(alpha, 0.5, 0.5), NA_real_)) # FIX: Typo corrected
+            beta  = ifelse(alpha >= 0, dbeta(alpha, 0.5, 0.5), NA_real_))
 
 tidyr::pivot_longer(dt_aux,
                     cols = atanh:beta,
@@ -55,3 +55,15 @@ tidyr::pivot_longer(dt_aux,
              y = density,
              color = prior)) +
   geom_line(lwd = 1)
+
+ggplot(data.frame(alpha = alpha),
+       aes(x = alpha)) +
+  stat_function(fun = normal_tanh,
+                xlim = c(-0.99, 0.99),
+                n = 201) +
+  stat_function(fun = normal_tanh,
+                xlim = c(-0.99, 0.99),
+                args = list(mean = 0,
+                            sd = .5),
+                n = 201,
+                color = 2)
