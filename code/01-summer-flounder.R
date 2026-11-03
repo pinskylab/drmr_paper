@@ -16,10 +16,12 @@ map_name <- system.file("maps/sum_fl.shp", package = "drmr")
 
 polygons <- st_read(map_name)
 
-polygons |>
+areas <- polygons |>
   st_area() |>
-  units::set_units("km^2") |>
-  summary()
+  units::set_units("km^2")
+
+areas |>
+  sort()
 
 ##--- splitting data for validation ----
 
@@ -74,11 +76,11 @@ dat_test <- dat_test |>
 ##--- turning response into density: 1k individuals per km2 ----
 
 dat_train <- dat_train |>
-  mutate(dens = 100 * y / area_km2,
+  mutate(dens = y / area_km2,
          .before = y)
 
 dat_test <- dat_test |>
-  mutate(dens = 100 * y / area_km2,
+  mutate(dens = y / area_km2,
          .before = y)
 
 chains <- 4
@@ -145,6 +147,7 @@ drm_rec <-
           site_col = "patch",
           family = "gamma",
           seed = 202505,
+          areas = units::drop_units(areas),
           formula_zero = ~ 1 + c_hauls,
           formula_rec = ~ 1 + c_stemp + I(c_stemp * c_stemp),
           formula_surv = ~ 1,
@@ -412,6 +415,7 @@ bind_rows(
   rename("Model" = "MODEL",
          "IS (90%)" = "IS") |>
   arrange(RMSE) |>
+  mutate(across(where(is.numeric), \(x) x * 1000)) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
                  digits = 2) |>
