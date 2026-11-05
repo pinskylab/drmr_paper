@@ -11,8 +11,7 @@ environment.
 
 1. **Install CmdStan**: This project depends on `CmdStan` (version \>=
    2.36). Please install it and the R package `cmdstanr` by following the
-   [official
-   instructions](https://mc-stan.org/cmdstanr/articles/cmdstanr.html).
+   [official instructions](https://mc-stan.org/cmdstanr/articles/cmdstanr.html).
 
 2. **Restore R Environment**: This repository uses `renv` to manage R package
    dependencies (including the version of `drmr` in the `pkg/` directory). To

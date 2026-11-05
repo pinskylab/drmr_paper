@@ -141,7 +141,7 @@ fig_rec_curve <-
   ggplot(data = eff_rec,
          aes(x = x_rec)) +
   geom_ribbon(aes(ymin = q5, ymax = q95),
-              fill = "steelblue",
+              fill = 1,
               alpha = .3) +
   geom_line(aes(y = q50,
                 color = "Estimated (median & 90% CI)"),
@@ -151,8 +151,8 @@ fig_rec_curve <-
             lty = 2,
             linewidth = .9) +
   scale_color_manual(name = NULL,
-                     values = c("Estimated (median & 90% CI)" = "steelblue4",
-                                "True relationship" = "firebrick")) +
+                     values = c("Estimated (median & 90% CI)" = 1,
+                                "True relationship" = 2)) +
   labs(x = expression(x^{(r)}~"(Recruitment covariate)"),
        y = "Recruitment density") +
   theme_bw() +
@@ -162,7 +162,7 @@ fig_surv_curve <-
   ggplot(data = eff_surv,
          aes(x = x_surv)) +
   geom_ribbon(aes(ymin = q5, ymax = q95),
-              fill = "steelblue",
+              fill = 1,
               alpha = .3) +
   geom_line(aes(y = q50,
                 color = "Estimated (median & 90% CI)"),
@@ -172,8 +172,8 @@ fig_surv_curve <-
             lty = 2,
             linewidth = .9) +
   scale_color_manual(name = NULL,
-                     values = c("Estimated (median & 90% CI)" = "steelblue4",
-                                "True relationship" = "firebrick")) +
+                     values = c("Estimated (median & 90% CI)" = 1,
+                                "True relationship" = 2)) +
   labs(x = expression(x^{(s)}~"(Survival covariate)"),
        y = "Survival probability") +
   theme_bw() +
@@ -297,8 +297,8 @@ fig_mc_coverage <-
              scales = "free_y",
              labeller = label_parsed) +
   scale_color_manual(name = "90% CI covers truth",
-                     values = c("TRUE" = "steelblue",
-                                "FALSE" = "firebrick")) +
+                     values = c("TRUE" = 1,
+                                "FALSE" = 2)) +
   labs(x = "Simulation replicate (ordered by posterior median)",
        y = "Posterior median & 90% CI") +
   theme_bw() +
