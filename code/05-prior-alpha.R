@@ -25,4 +25,8 @@ tidyr::expand_grid(alpha = alpha,
        y = expression(pi(alpha))) +
   theme_bw()
 
+gratio <- 0.5 * (1 + sqrt(5))
 
+ggsave(filename = "overleaf/img/prior_alpha.pdf",
+       width = 7,
+       height = .75 * 7 / gratio)

@@ -179,15 +179,23 @@ fig_surv_curve <-
   theme_bw() +
   theme(legend.position = "top")
 
+leg <- cowplot::get_legend(fig_rec_curve)
+
 ##--- * panel for single synthetic case ----
 
 gratio <- 0.5 * (1 + sqrt(5))
 
-fig_single_all <-
-  plot_grid(fig_rec_curve, fig_surv_curve,
+panels <-
+  plot_grid(fig_rec_curve + theme(legend.position = "none"),
+            fig_surv_curve + theme(legend.position = "none"),
             labels = "AUTO",
             label_size = 10,
             ncol = 2)
+
+fig_single_all <-
+  plot_grid(leg, panels,
+            ncol = 1,
+            rel_heights = c(0.08, 1))
 
 ggsave(filename = "overleaf/img/sim_single_recovery.pdf",
        plot = fig_single_all,
