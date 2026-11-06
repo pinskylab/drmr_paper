@@ -5,14 +5,6 @@
       {
         "Name": "CRAN",
         "URL": "https://cloud.r-project.org"
-      },
-      {
-        "Name": "INLA",
-        "URL": "https://inla.r-inla-download.org/R/stable"
-      },
-      {
-        "Name": "RandomFields",
-        "URL": "https://predictiveecology.r-universe.dev"
       }
     ]
   },
@@ -883,17 +875,18 @@
     },
     "drmr": {
       "Package": "drmr",
-      "Version": "1.0.2",
+      "Version": "1.1.2",
       "Source": "Local",
       "Type": "Package",
       "Title": "An R package with pre-compiled cmdstan code for dynamic range models",
-      "Authors@R": "person(given = \"Anonymous\", role = c(\"aut\", \"cre\"), email = \"anonymous@duck.com\")",
+      "Authors@R": "c( person(given = \"Lucas\", family = \"da Cunha Godoy\", email = \"lcgodoy@duck.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0003-4265-972X\")), person(given = \"Malin\", family = \"Pinsky\", email = \"mpinsky@ucsc.edu\", role = c(\"aut\"), comment = c(ORCID = \"0000-0002-8523-8952\")) )",
       "Description": "The models available are described in the vignette. The class of models we provide were first discussed in Pagel and Schur (2012) (<doi:10.1111/j.1466-8238.2011.00663.x>).",
+      "BugReports": "https://github.com/pinskylab/drmr/issues/",
       "Depends": [
-        "R (>= 4.1.0)"
+        "R (>= 4.3.0)"
       ],
       "Imports": [
-        "instantiate (>= 0.2.3.9002)",
+        "instantiate (>= 0.2.4)",
         "posterior",
         "sf",
         "spdep",
@@ -915,21 +908,21 @@
         "bayesplot"
       ],
       "Config/Needs/website": "ggplot2, r-lib/pkgdown, quarto",
-      "Additional_repositories": "https://mc-stan.org/r-packages/",
+      "Additional_repositories": "https://stan-dev.r-universe.dev/",
       "SystemRequirements": "CmdStan (https://mc-stan.org/users/interfaces/cmdstan)",
       "Encoding": "UTF-8",
       "LazyData": "true",
       "Roxygen": "list(markdown = TRUE)",
-      "RoxygenNote": "7.3.3",
       "VignetteBuilder": "quarto",
       "Language": "en-US",
       "License": "GPL (>= 3)",
+      "URL": "https://pinskylab.github.io/drmr/",
+      "Config/roxygen2/version": "8.1.1",
       "NeedsCompilation": "yes",
-      "Author": "Anonymous [aut, cre]",
-      "Maintainer": "Anonymous <anonymous@duck.com>",
+      "Author": "Lucas da Cunha Godoy [aut, cre] (ORCID: <https://orcid.org/0000-0003-4265-972X>), Malin Pinsky [aut] (ORCID: <https://orcid.org/0000-0002-8523-8952>)",
+      "Maintainer": "Lucas da Cunha Godoy <lcgodoy@duck.com>",
       "RemoteType": "local",
-      "RemoteUrl": "pkg/drmr_1.0.2.tar.gz",
-      "Remotes": "wlandau/instantiate"
+      "RemoteUrl": "pkg/drmr_1.1.2.tar.gz"
     },
     "e1071": {
       "Package": "e1071",
@@ -1327,8 +1320,8 @@
     },
     "instantiate": {
       "Package": "instantiate",
-      "Version": "0.2.4.9000",
-      "Source": "GitHub",
+      "Version": "0.2.4",
+      "Source": "Repository",
       "Title": "Pre-Compiled 'CmdStan' Models in R Packages",
       "Description": "Similar to 'rstantools' for 'rstan', the 'instantiate' package builds pre-compiled 'CmdStan' models into CRAN-ready statistical modeling R packages. The models compile once during installation, the executables live inside the file systems of their respective packages, and users have the full power and convenience of 'cmdstanr' without any additional compilation after package installation. This approach saves time and helps R package developers migrate from 'rstan' to the more modern 'cmdstanr'. Packages 'rstantools', 'cmdstanr', 'stannis', and 'stanapi' are similar Stan clients with different objectives.",
       "License": "MIT + file LICENSE",
@@ -1354,16 +1347,11 @@
       "Encoding": "UTF-8",
       "Language": "en-US",
       "Config/testthat/edition": "3",
-      "Roxygen": "list(markdown = TRUE)",
       "Config/roxygen2/version": "8.1.0",
+      "NeedsCompilation": "yes",
       "Author": "William Michael Landau [aut, cre] (ORCID: <https://orcid.org/0000-0003-1878-3253>), Eli Lilly and Company [cph, fnd]",
       "Maintainer": "William Michael Landau <will.landau.oss@gmail.com>",
-      "RemoteType": "github",
-      "RemoteHost": "api.github.com",
-      "RemoteUsername": "wlandau",
-      "RemoteRepo": "instantiate",
-      "RemoteRef": "main",
-      "RemoteSha": "ef6eb93f259b80153216e4916dbc0b2676152b83"
+      "Repository": "CRAN"
     },
     "isoband": {
       "Package": "isoband",
@@ -1776,12 +1764,12 @@
     },
     "posterior": {
       "Package": "posterior",
-      "Version": "1.7.1",
+      "Version": "1.7.0",
       "Source": "Repository",
       "Title": "Tools for Working with Posterior Distributions",
-      "Date": "2026-06-10",
+      "Date": "2026-04-01",
       "Authors@R": "c(person(\"Paul-Christian\", \"Bürkner\", email = \"paul.buerkner@gmail.com\", role = c(\"aut\", \"cre\")), person(\"Jonah\", \"Gabry\", email = \"jgabry@gmail.com\", role = c(\"aut\")), person(\"Matthew\", \"Kay\", email = \"mjskay@northwestern.edu\", role = c(\"aut\")), person(\"Aki\", \"Vehtari\", email = \"Aki.Vehtari@aalto.fi\", role = c(\"aut\")), person(\"Måns\", \"Magnusson\", role = c(\"ctb\")), person(\"Rok\", \"Češnovar\", role = c(\"ctb\")), person(\"Ben\", \"Lambert\", role = c(\"ctb\")), person(\"Ozan\", \"Adıgüzel\", role = c(\"ctb\")),  person(\"Jacob\", \"Socolar\", role = c(\"ctb\")), person(\"Noa\", \"Kallioinen\", role = c(\"ctb\")), person(\"Teemu\", \"Säilynoja\", role = c(\"ctb\")))",
-      "Description": "Provides useful tools for both users and developers of Bayesian modeling software, focusing on manipulating, summarizing, and diagnosing the output of Bayesian models. The primary goals of the package are to: (a) Efficiently convert between many different useful formats of draws (samples) from posterior or prior distributions. (b) Provide consistent methods for operations commonly performed on draws, for example, subsetting, binding, or mutating draws. (c) Provide various summaries of draws in convenient formats. (d) Provide lightweight implementations of state of the art posterior inference diagnostics. References: Vehtari et al. (2021) <doi:10.1214/20-BA1221>.",
+      "Description": "Provides useful tools for both users and developers of packages  for fitting Bayesian models or working with output from Bayesian models. The primary goals of the package are to:  (a) Efficiently convert between many different useful formats of draws (samples) from posterior or prior distributions. (b) Provide consistent methods for operations commonly performed on draws,  for example, subsetting, binding, or mutating draws. (c) Provide various summaries of draws in convenient formats. (d) Provide lightweight implementations of state of the art posterior  inference diagnostics. References: Vehtari et al. (2021)  <doi:10.1214/20-BA1221>.",
       "Depends": [
         "R (>= 3.2.0)"
       ],
@@ -1817,16 +1805,12 @@
       "Encoding": "UTF-8",
       "URL": "https://mc-stan.org/posterior/, https://discourse.mc-stan.org/",
       "BugReports": "https://github.com/stan-dev/posterior/issues",
-      "Roxygen": "list(markdown = TRUE)",
       "RoxygenNote": "7.3.3",
       "VignetteBuilder": "knitr",
-      "Repository": "https://stan-dev.r-universe.dev",
-      "RemoteUrl": "https://github.com/stan-dev/posterior",
-      "RemoteRef": "HEAD",
-      "RemoteSha": "48243f82bedadabe0a9c3661f6d2a85c2e4df947",
       "NeedsCompilation": "no",
       "Author": "Paul-Christian Bürkner [aut, cre], Jonah Gabry [aut], Matthew Kay [aut], Aki Vehtari [aut], Måns Magnusson [ctb], Rok Češnovar [ctb], Ben Lambert [ctb], Ozan Adıgüzel [ctb], Jacob Socolar [ctb], Noa Kallioinen [ctb], Teemu Säilynoja [ctb]",
-      "Maintainer": "Paul-Christian Bürkner <paul.buerkner@gmail.com>"
+      "Maintainer": "Paul-Christian Bürkner <paul.buerkner@gmail.com>",
+      "Repository": "https://packagemanager.posit.co/cran/latest"
     },
     "processx": {
       "Package": "processx",
@@ -2003,7 +1987,7 @@
     },
     "renv": {
       "Package": "renv",
-      "Version": "1.1.8",
+      "Version": "1.2.4",
       "Source": "Repository",
       "Type": "Package",
       "Title": "Project Environments",
@@ -2045,13 +2029,13 @@
         "webfakes"
       ],
       "Encoding": "UTF-8",
-      "RoxygenNote": "7.3.3",
       "VignetteBuilder": "knitr",
-      "NeedsCompilation": "yes",
       "Config/Needs/website": "tidyverse/tidytemplate",
       "Config/testthat/edition": "3",
       "Config/testthat/parallel": "true",
       "Config/testthat/start-first": "bioconductor,python,install,restore,snapshot,retrieve,remotes",
+      "Config/roxygen2/version": "8.0.0",
+      "NeedsCompilation": "no",
       "Author": "Kevin Ushey [aut, cre] (ORCID: <https://orcid.org/0000-0003-2880-7407>), Hadley Wickham [aut] (ORCID: <https://orcid.org/0000-0003-4757-117X>), Posit Software, PBC [cph, fnd]",
       "Maintainer": "Kevin Ushey <kevin@rstudio.com>",
       "Repository": "CRAN"

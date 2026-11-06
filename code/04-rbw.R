@@ -6,6 +6,15 @@ library(drmr)
 library(cowplot)
 library(cmdstanr)
 
+##--- prior for autoregressive parameter ----
+normal_tanh <- function(x, mean = 0, sd = 1, log = FALSE) {
+  stopifnot(all(abs(x) <= 1))
+  theta <- atanh(x)
+  lp_theta <- dnorm(theta, mean = mean, sd = sd, log = TRUE) - log1p(- x * x)  
+  if (!log) return(exp(lp_theta))
+  return(lp_theta)
+}
+
 bayesplot::color_scheme_set(scheme = "mix-pink-teal")
 
 ## loading data
@@ -25,9 +34,11 @@ my_dt <- my_dt |>
 polygons <- my_map |>
   st_geometry()
 
-polygons |>
+areas <- polygons |>
   st_area() |>
-  units::set_units("km^2") |>
+  units::set_units("km^2")
+
+areas |>
   summary()
 
 ##--- splitting data for validation ----
@@ -99,10 +110,6 @@ my_map |>
 
 adj_mat <- gen_adj(st_geometry(polygons))
 
-## row-standardized matrix
-adj_mat <-
-  t(apply(adj_mat, 1, \(x) x / (sum(x))))
-
 ##--- * Recruitment ----
 
 n_ages <- 12
@@ -113,6 +120,13 @@ n_ages <- 12
 algo <- "nuts" ## change the inference method
 algo_args <- list(parallel_chains = 4,
                   chains = 4) ## change inference algorithm defaults
+
+toggles_rec <- list(ar_re = "rec",
+                    sp_re = "surv",
+                    movement = 1,
+                    est_surv = 1,
+                    est_init = 0,
+                    minit = 1)
 
 drm_rec <-
   fit_drm(.data = dat_train,
@@ -125,20 +139,14 @@ drm_rec <-
           formula_rec = ~ 1 + c_tavg + I(c_tavg * c_tavg),
           formula_surv = ~ 1,
           n_ages = 12,
+          areas = units::drop_units(areas),
           adj_mat = adj_mat, ## A matrix for movement routine
           ## init_data = init_ldens,
           ages_movement = c(0, 0,
                             rep(1, n_ages - 4),
                             0, 0), ## ages allowed to move
-          .toggles = list(ar_re = "rec",
-                          sp_re = "surv",
-                          movement = 1,
-                          est_surv = 1,
-                          est_init = 0,
-                          minit = 1),
-          .priors = list(pr_phi_a = 1, pr_phi_b = .1,
-                         pr_alpha_a = 4.2, pr_alpha_b = 5.8,
-                         pr_zeta_a = 7, pr_zeta_b = 3),
+          .toggles = toggles_rec,
+          .priors = list(pr_zeta_a = 7, pr_zeta_b = 3),
           algo = algo,
           algo_args = algo_args)
 ##--- Convergence & estimates ----
@@ -176,12 +184,13 @@ curve(dgamma(x,
       lwd = 2)
 
 plot(drm_rec, variables = "alpha", type = "density")
-curve(dbeta(x,
-            shape1 = drm_rec$data$pr_alpha_a,
-            shape2 = drm_rec$data$pr_alpha_b), 
-      add = TRUE, 
+curve(normal_tanh(x,
+                  mean = drm_rec$data$pr_alpha_mu,
+                  sd = drm_rec$data$pr_alpha_sd), 
+      add = TRUE,
       lty = 2,
-      lwd = 2)
+      lwd = 2,
+      from = -1, to = 1)
 
 ##--- * ggplot ----
 
@@ -235,10 +244,17 @@ draws(drm_rec, variables = c("xi")) |>
 
 ##--- DRM Survival ----
 
+toggles_surv <- replace(toggles_rec, which(names(toggles_rec) == "sp_re"),
+                        "none") |>
+  c(list("iid_re" = "dens"))
+
 drm_surv <-
   update(drm_rec,
          formula_rec = ~ 1,
-         formula_surv = ~ 1 + c_tavg + I(c_tavg * c_tavg))
+         formula_surv = ~ 1 + c_tavg + I(c_tavg * c_tavg),
+         ## .toggles = toggles_surv,
+         .priors = list(pr_zeta_a = 7, pr_zeta_b = 3,
+                        pr_alpha_mu = .5))
 
 ##--- Convergence check ----
 
@@ -257,6 +273,22 @@ plot(drm_surv, type = "trace")
 summary(drm_surv)
 ## specific quantiles
 summary(drm_surv, probs = c(.1, .9))
+
+##--- * SDM ----
+
+sdm_aux <-
+  fit_sdm(.data = dat_train,
+          y_col = "dens", ## response variable: density
+          time_col = "year", ## vector of time points
+          site_col = "id",
+          family = "gamma",
+          seed = 202505,
+          formula_zero = ~ 1 + n_routes,
+          formula_dens = ~ 1 + c_tavg + I(c_tavg * c_tavg),
+          adj_mat = adj_mat, ## A matrix for movement routine
+          .toggles = list(ar_re = 1,
+                          sp_re = 1),
+          algo_args = list(parallel_chains = 4))
 
 ##--- Projections ----
 
@@ -278,6 +310,12 @@ proj_surv <- predict(drm_surv,
                      cores = 4) |>
   summary(probs = c(.05, .5, .95))
 
+proj_sdm <- predict(sdm_aux,
+                    new_data = dat_test,
+                    seed = 125,
+                    cores = 4) |>
+  summary(probs = c(.05, .5, .95))
+
 ##--- Viz predicted and observed ----
 
 ci_mass <- .9
@@ -293,6 +331,10 @@ fitted_surv <-
   fitted(drm_surv) |>
   summary(probs = c(.05, .5, .95))
 
+fitted_sdm <-
+  fitted(sdm_aux) |>
+  summary(probs = c(.05, .5, .95))
+
 ##--- Figure not included in the manuscript ----
 
 set.seed(2026)
@@ -302,7 +344,9 @@ bind_rows(
     bind_rows(fitted_rec, proj_rec) |>
     mutate(model = "DRM (rec)"),
     bind_rows(fitted_surv, proj_surv) |>
-    mutate(model = "DRM (surv)")
+    mutate(model = "DRM (surv)"),
+    bind_rows(fitted_sdm, proj_sdm) |>
+    mutate(model = "SDM")
 ) |>
   mutate(id = as.integer(id)) |>
   filter(id %in% sample_ids) |>
@@ -340,7 +384,9 @@ bind_rows(
     bind_rows(fitted_rec, proj_rec) |>
     mutate(model = "DRM (rec)"),
     bind_rows(fitted_surv, proj_surv) |>
-    mutate(model = "DRM (surv)")
+    mutate(model = "DRM (surv)"),
+    bind_rows(fitted_sdm, proj_sdm) |>
+    mutate(model = "SDM")
 ) |>
   mutate(id = as.integer(id)) |>
   left_join(bind_rows(dat_train, dat_test),
@@ -357,7 +403,7 @@ bind_rows(
   rename_all(toupper) |>
   rename("Model" = "MODEL",
          "IS (90%)" = "IS") |>
-  arrange(RMSE) |>
+  arrange(desc(TYPE), RMSE) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
                  digits = 2) |>

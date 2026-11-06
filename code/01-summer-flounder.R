@@ -6,6 +6,15 @@ library(drmr)
 library(cowplot)
 library(cmdstanr)
 
+##--- prior for autoregressive parameter ----
+normal_tanh <- function(x, mean = 0, sd = 1, log = FALSE) {
+  stopifnot(all(abs(x) <= 1))
+  theta <- atanh(x)
+  lp_theta <- dnorm(theta, mean = mean, sd = sd, log = TRUE) - log1p(- x * x)  
+  if (!log) return(exp(lp_theta))
+  return(lp_theta)
+}
+
 bayesplot::color_scheme_set(scheme = "mix-pink-teal")
 
 ## loading data
@@ -76,11 +85,11 @@ dat_test <- dat_test |>
 ##--- turning response into density: 1k individuals per km2 ----
 
 dat_train <- dat_train |>
-  mutate(dens = y / area_km2,
+  mutate(dens = 100 * y / area_km2,
          .before = y)
 
 dat_test <- dat_test |>
-  mutate(dens = y / area_km2,
+  mutate(dens = 100 * y / area_km2,
          .before = y)
 
 chains <- 4
@@ -165,9 +174,27 @@ drm_rec <-
           .priors = list(pr_zeta_a = 7, pr_zeta_b = 3),
           algo_args = list(parallel_chains = 4))
 
+sdm_aux <-
+  fit_sdm(.data = dat_train,
+          y_col = "dens", ## response variable: density
+          time_col = "year", ## vector of time points
+          site_col = "patch",
+          family = "gamma",
+          seed = 202505,
+          formula_zero = ~ 1 + c_hauls,
+          formula_dens = ~ 1 + c_stemp + I(c_stemp * c_stemp) +
+            c_btemp + I(c_btemp * c_btemp),
+          adj_mat = adj_mat, ## A matrix for movement routine
+          .toggles = list(ar_re = 1),
+          algo_args = list(parallel_chains = 4))
+
 ##--- Convergence check ----
 
 mcmc_diag(drm_rec) |>
+  print() |>
+  summary()
+
+mcmc_diag(sdm_aux) |>
   print() |>
   summary()
 
@@ -179,6 +206,12 @@ plot(drm_rec, type = "density")
 
 par(mfrow = c(3, 4))
 plot(drm_rec, type = "trace")
+
+par(mfrow = c(3, 4))
+plot(sdm_aux, type = "density")
+
+par(mfrow = c(3, 4))
+plot(sdm_aux, type = "trace")
 
 ##--- parameter estimates ----
 
@@ -200,12 +233,13 @@ curve(dgamma(x,
       lwd = 2)
 
 plot(drm_rec, variables = "alpha", type = "density")
-curve(dbeta(x,
-            shape1 = drm_rec$data$pr_alpha_a,
-            shape2 = drm_rec$data$pr_alpha_b), 
-      add = TRUE, 
+curve(normal_tanh(x,
+                  mean = drm_rec$data$pr_alpha_mu,
+                  sd = drm_rec$data$pr_alpha_sd), 
+      add = TRUE,
       lty = 2,
-      lwd = 2)
+      lwd = 2,
+      from = -1, to = 1)
 
 ##--- * ggplot ----
 
@@ -217,7 +251,8 @@ draws(drm_rec, variables = c("zeta")) |>
                 xlim = c(0, 1),
                 n = 501,
                 inherit.aes = FALSE,
-                color = 2,
+                color = 1,
+                lty = 2,
                 lwd = 1.2)
 
 draws(drm_rec, variables = c("sigma_t")) |>
@@ -228,7 +263,8 @@ draws(drm_rec, variables = c("sigma_t")) |>
                 xlim = c(0, .5),
                 n = 501,
                 inherit.aes = FALSE,
-                color = 2,
+                color = 1,
+                lty = 2,
                 lwd = 1.2)
 
 draws(drm_rec, variables = c("xi")) |>
@@ -242,7 +278,8 @@ draws(drm_rec, variables = c("xi")) |>
   xlim = c(-5, -1e-16),
   n = 501,
   inherit.aes = FALSE,
-  color = 2,
+  color = 1,
+  lty = 2,
   lwd = 1.2)
 
 ##--- DRM Survival ----
@@ -325,6 +362,12 @@ proj_rs <- predict(drm_rs,
                    cores = 4) |>
   summary(probs = c(.05, .5, .95))
 
+proj_sdm <- predict(sdm_aux,
+                    new_data = dat_test,
+                    seed = 125,
+                    cores = 4) |>
+  summary(probs = c(.05, .5, .95))
+
 ##--- Viz predicted and observed ----
 
 ci_mass <- .8
@@ -344,6 +387,10 @@ fitted_rs <-
   fitted(drm_rs) |>
   summary(probs = c(.05, .5, .95))
 
+fitted_sdm <-
+  fitted(sdm_aux) |>
+  summary(probs = c(.05, .5, .95))
+
 ##--- Figure 2 ----
 
 aux_fig <-
@@ -358,7 +405,9 @@ bind_rows(
     bind_rows(fitted_surv, proj_surv) |>
     mutate(model = "DRM (surv)"),
     bind_rows(fitted_rs, proj_rs) |>
-    mutate(model = "DRM (rec-surv)")
+    mutate(model = "DRM (rec-surv)"),
+    bind_rows(fitted_sdm, proj_sdm) |>
+    mutate(model = "SDM")
 ) |>
   mutate(patch = factor(as.integer(patch),
                         levels = rev(unique(as.integer(patch))))) |>
@@ -368,8 +417,8 @@ bind_rows(
              lty = 2) +
   geom_ribbon(aes(x = year,
                   ymin = q5, ymax = q95,
-                  fill = model,
-                  color = model),
+                  fill = model),
+              color = "transparent",
               alpha = .4) +
   geom_line(aes(x = year, y = q50, color = model)) +
   geom_point(data = aux_fig,
@@ -397,7 +446,9 @@ bind_rows(
     bind_rows(fitted_surv, proj_surv) |>
     mutate(model = "DRM (surv)"),
     bind_rows(fitted_rs, proj_rs) |>
-    mutate(model = "DRM (rec-surv)")
+    mutate(model = "DRM (rec-surv)"),
+    bind_rows(fitted_sdm, proj_sdm) |>
+    mutate(model = "SDM")
 ) |>
   mutate(patch = as.integer(patch)) |>
   left_join(bind_rows(dat_train, dat_test),
@@ -414,11 +465,11 @@ bind_rows(
   rename_all(toupper) |>
   rename("Model" = "MODEL",
          "IS (90%)" = "IS") |>
-  arrange(RMSE) |>
-  mutate(across(where(is.numeric), \(x) x * 1000)) |>
+  arrange(desc(TYPE), RMSE) |>
+  ## mutate(across(where(is.numeric), \(x) x * 1000)) |>
   print() |>
   xtable::xtable(caption = "Forecasting skill according to different metrics",
-                 digits = 2) |>
+                 digits = 3) |>
   print(include.rownames = FALSE)
 
 ##--- Relationships with the environment ----
