@@ -21,14 +21,21 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       CMDSTAN_VERSION: "2.38.0"
-      CMDSTAN_DIR: ${{ runner.temp }}/cmdstan
-      RENV_PATHS_ROOT: ${{ runner.temp }}/renv-root
       RENV_CONFIG_REPOS_OVERRIDE: "CRAN=https://packagemanager.posit.co/cran/latest"
       RENV_CONFIG_PAK_ENABLED: "FALSE"
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+
+      - name: Configure cache and CmdStan paths
+        shell: bash
+        env:
+          RUNNER_TEMP_PATH: ${{ runner.temp }}
+        run: |
+          base="${RUNNER_TEMP_PATH//\\//}"
+          echo "CMDSTAN_DIR=${base}/cmdstan" >> "$GITHUB_ENV"
+          echo "RENV_PATHS_ROOT=${base}/renv-root" >> "$GITHUB_ENV"
 
       - name: Set up R
         id: setup-r
