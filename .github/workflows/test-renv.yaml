@@ -1,0 +1,166 @@
+name: Test renv Environment
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-renv:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      CMDSTAN_VERSION: "2.38.0"
+      CMDSTAN_DIR: ${{ runner.temp }}/cmdstan
+      RENV_PATHS_ROOT: ${{ runner.temp }}/renv-root
+      RENV_CONFIG_REPOS_OVERRIDE: "CRAN=https://packagemanager.posit.co/cran/latest"
+      RENV_CONFIG_PAK_ENABLED: "FALSE"
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up R
+        id: setup-r
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: renv
+          use-public-rspm: true
+
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@v2
+
+      - name: Install Linux system dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            cmake \
+            libabsl-dev \
+            libcurl4-openssl-dev \
+            libfontconfig1-dev \
+            libgdal-dev \
+            libgeos-dev \
+            libicu-dev \
+            libproj-dev \
+            libsqlite3-dev \
+            libssl-dev \
+            libudunits2-dev \
+            libuv1-dev \
+            libxml2-dev
+
+      - name: Cache renv packages
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.RENV_PATHS_ROOT }}
+          key: renv-${{ runner.os }}-r${{ steps.setup-r.outputs.installed-r-version }}-cmdstan${{ env.CMDSTAN_VERSION }}-${{ hashFiles('renv.lock', 'pkg/*.tar.gz') }}-v1
+          restore-keys: |
+            renv-${{ runner.os }}-r${{ steps.setup-r.outputs.installed-r-version }}-cmdstan${{ env.CMDSTAN_VERSION }}-${{ hashFiles('renv.lock') }}-
+            renv-${{ runner.os }}-r${{ steps.setup-r.outputs.installed-r-version }}-
+
+      - name: Cache CmdStan
+        uses: actions/cache@v4
+        with:
+          path: ${{ env.CMDSTAN_DIR }}
+          key: cmdstan-${{ runner.os }}-${{ env.CMDSTAN_VERSION }}-v1
+
+      - name: Phase 1 - Restore R dependencies (excluding drmr)
+        shell: Rscript {0}
+        run: |
+          renv::restore(exclude = "drmr", prompt = FALSE)
+
+      - name: Install and configure CmdStan
+        shell: Rscript {0}
+        run: |
+          cmdstan_dir <- Sys.getenv("CMDSTAN_DIR")
+          cmdstan_ver <- Sys.getenv("CMDSTAN_VERSION")
+          dir.create(cmdstan_dir, recursive = TRUE, showWarnings = FALSE)
+          target_dir <- file.path(cmdstan_dir, paste0("cmdstan-", cmdstan_ver))
+
+          cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+
+          needs_install <- TRUE
+          if (dir.exists(target_dir)) {
+            suppressWarnings(cmdstanr::set_cmdstan_path(target_dir))
+            installed_ver <- tryCatch(
+              cmdstanr::cmdstan_version(error_on_NA = FALSE),
+              error = function(e) NULL
+            )
+            if (identical(installed_ver, cmdstan_ver)) {
+              message("Using cached CmdStan ", installed_ver, " at ", target_dir)
+              needs_install <- FALSE
+            }
+          }
+
+          if (needs_install) {
+            ncpu <- parallel::detectCores(logical = FALSE)
+            if (is.na(ncpu) || ncpu < 1L) ncpu <- 2L
+            cores <- max(1L, min(4L, as.integer(ncpu)))
+            cmdstanr::install_cmdstan(
+              dir = cmdstan_dir,
+              version = cmdstan_ver,
+              cores = cores,
+              overwrite = TRUE,
+              timeout = 1800
+            )
+            cmdstanr::set_cmdstan_path(target_dir)
+          }
+
+          if (!identical(cmdstanr::cmdstan_version(error_on_NA = FALSE), cmdstan_ver)) {
+            stop("CmdStan ", cmdstan_ver, " installation/verification failed at ", target_dir)
+          }
+
+          norm_target <- normalizePath(target_dir, winslash = "/", mustWork = TRUE)
+          cat(sprintf("CMDSTAN=%s\n", norm_target), file = Sys.getenv("GITHUB_ENV"), append = TRUE)
+
+          if (.Platform$OS.type == "windows") {
+            tbb_dir <- normalizePath(
+              file.path(norm_target, "stan/lib/stan_math/lib/tbb"),
+              winslash = "/",
+              mustWork = FALSE
+            )
+            if (dir.exists(tbb_dir)) {
+              cat(paste0(tbb_dir, "\n"), file = Sys.getenv("GITHUB_PATH"), append = TRUE)
+            }
+          }
+
+      - name: Phase 2 - Restore drmr and compile Stan models
+        env:
+          RENV_CONFIG_INSTALL_TRANSACTIONAL: "FALSE"
+        shell: Rscript {0}
+        run: |
+          renv::restore(packages = "drmr", prompt = FALSE)
+          stan_dir <- system.file("bin/stan", package = "drmr")
+          ext <- if (.Platform$OS.type == "windows") ".exe" else ""
+          expected <- paste0(
+            c("adults_drm", "drm", "fitted_drm", "fitted_sdm", "lambda_gq",
+              "loglik_drm", "loglik_sdm", "predict", "predict_sdm", "sdm"),
+            ext
+          )
+          missing <- if (!nzchar(stan_dir)) {
+            expected
+          } else {
+            expected[!file.exists(file.path(stan_dir, expected))]
+          }
+          if (length(missing) > 0L) {
+            message(
+              "Rebuilding drmr because Stan executables are missing: ",
+              paste(missing, collapse = ", ")
+            )
+            renv::restore(packages = "drmr", rebuild = "drmr", prompt = FALSE)
+          }
+
+      - name: Verify environment and run smoke tests
+        shell: Rscript {0}
+        run: |
+          source("tests/verify-env.R")
