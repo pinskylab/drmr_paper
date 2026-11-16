@@ -35,24 +35,15 @@ areas |>
 ##--- splitting data for validation ----
 
 ## reserving 5 years for forecast assessment
-first_year_forecast <- max(sum_fl$year) - 4
-
-## "year to id"
-first_id_forecast <-
-  first_year_forecast - min(sum_fl$year) + 1
-
-years_all <- order(unique(sum_fl$year))
-years_train <- years_all[years_all < first_id_forecast]
-years_test <- years_all[years_all >= first_id_forecast]
-
 dat_test <- sum_fl |>
-  filter(year >= first_year_forecast)
+  filter(!train_flag)
 
 dat_train <- sum_fl |>
-  filter(year < first_year_forecast)
+  filter(train_flag)
 
 ##--- centering covariates (for improved mcmc efficiency) ---
 
+## repeated code: the intention is to show how we do it.
 avgs <- c("stemp" = mean(dat_train$stemp),
           "btemp" = mean(dat_train$btemp),
           "depth" = mean(dat_train$depth),
@@ -68,7 +59,6 @@ dat_train <- dat_train |>
   mutate(c_stemp = stemp - avgs["stemp"],
          c_btemp = btemp - avgs["btemp"],
          c_hauls = n_hauls - avgs["n_hauls"],
-         ## depth = depth - avgs["depth"],
          c_lat   = lat - avgs["lat"],
          c_lon   = lon - avgs["lon"],
          time  = year - min_year)
@@ -77,25 +67,15 @@ dat_test <- dat_test |>
   mutate(c_stemp = stemp - avgs["stemp"],
          c_btemp = btemp - avgs["btemp"],
          c_hauls = n_hauls - avgs["n_hauls"],
-         ## depth = depth - avgs["depth"],
          c_lat   = lat - avgs["lat"],
          c_lon   = lon - avgs["lon"],
          time  = year - min_year)
 
-##--- turning response into density: 1k individuals per km2 ----
 
-dat_train <- dat_train |>
-  mutate(dens = 100 * y / area_km2,
-         .before = y)
-
-dat_test <- dat_test |>
-  mutate(dens = 100 * y / area_km2,
-         .before = y)
+##--- fitting DRMs ----
 
 chains <- 4
 cores <- 4
-
-##--- fitting DRMs ----
 
 adj_mat <- gen_adj(st_buffer(st_geometry(polygons),
                              dist = 2500))
@@ -104,6 +84,9 @@ adj_mat <- gen_adj(st_buffer(st_geometry(polygons),
 fmat <-
   system.file("fmat.rds", package = "drmr") |>
   readRDS()
+
+years_train <- unique(dat_train$time + 1)
+years_test  <- unique(dat_test$time + 1)
 
 f_train <- fmat[, years_train]
 f_test  <- fmat[, years_test]
