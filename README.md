@@ -9,18 +9,45 @@ paper, "`drmr`: A Bayesian approach to Dynamic Range Models in R."
 Before running any analysis, please follow these steps to set up the required
 environment.
 
-1. **Install CmdStan**: This project depends on `CmdStan` (version \>=
-   2.36). Please install it and the R package `cmdstanr` by following the
-   [official instructions](https://mc-stan.org/cmdstanr/articles/cmdstanr.html).
+> Windows users must install
+> [Rtools](https://cran.r-project.org/bin/windows/Rtools/rtools45/rtools.html)
+> before running `renv::restore`.
 
-2. **Restore R Environment**: This repository uses `renv` to manage R package
-   dependencies (including the version of `drmr` in the `pkg/` directory). To
-   install all required packages, open this project in R and run:y
+1. **Restore R Dependencies (Stage 1 — excluding `drmr`)**: This repository uses
+   `renv` to manage R package dependencies (including the `drmr` tarball in
+   `pkg/`). Because `drmr` pre-compiles its Stan models during package
+   installation using `instantiate` and `CmdStan`, restore all other packages
+   first (including `cmdstanr` and `instantiate`). Open this project in R and
+   run:
    ```r
-   renv::restore()
+   renv::restore(exclude = "drmr")
    ```
 
-3. **System Dependencies (Optional)**: If you wish to regenerate the raw
+2. **Install `CmdStan` (\>= 2.36)**: This project depends on `CmdStan` (version
+   \>= 2.36). With `cmdstanr` installed in the `renv` library, verify your C++
+   toolchain and install `CmdStan` (for example, version `2.38.0`, which is
+   tested in CI; see the
+   [official `cmdstanr` instructions](https://mc-stan.org/cmdstanr/articles/cmdstanr.html)
+   if you need platform-specific details):
+   ```r
+   cmdstanr::check_cmdstan_toolchain(fix = TRUE)
+   cmdstanr::install_cmdstan(version = "2.38.0")
+   ```
+
+3. **Install `drmr` (Stage 2)**: Once `CmdStan` is installed, install `drmr`
+   so `instantiate` pre-compiles all Stan executables during setup:
+   ```r
+   Sys.setenv(RENV_CONFIG_INSTALL_TRANSACTIONAL = FALSE)
+   renv::restore(packages = "drmr")
+   ```
+
+4. **Verify Environment (Optional)**: To confirm `renv`, `CmdStan`, spatial
+   dependencies, and pre-compiled `drmr` Stan models are working, run:
+   ```r
+   source("tests/verify-env.R")
+   ```
+
+5. **System Dependencies (Optional)**: If you wish to regenerate the raw
    environmental data for the red-bellied woodpecker case study, you must also
    have the `bash` interface to [GDAL](https://gdal.org/en/stable/) set up in
    your system. This is not required if you use the provided, pre-processed
