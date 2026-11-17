@@ -121,8 +121,8 @@ algo <- "nuts" ## change the inference method
 algo_args <- list(parallel_chains = 4,
                   chains = 4) ## change inference algorithm defaults
 
-toggles_rec <- list(ar_re = "rec",
-                    sp_re = "surv",
+toggles_rec <- list(ar_re = "dens",
+                    sp_re = "dens",
                     movement = 1,
                     est_surv = 1,
                     est_init = 0,
@@ -142,13 +142,12 @@ drm_rec <-
           areas = units::drop_units(areas),
           adj_mat = adj_mat, ## A matrix for movement routine
           ## init_data = init_ldens,
-          ages_movement = c(0, 0,
-                            rep(1, n_ages - 4),
-                            0, 0), ## ages allowed to move
+          ages_movement = c(1, rep(0, n_ages - 1)), ## ages allowed to move
           .toggles = toggles_rec,
           .priors = list(pr_zeta_a = 7, pr_zeta_b = 3),
           algo = algo,
           algo_args = algo_args)
+
 ##--- Convergence & estimates ----
 
 mcmc_diag(drm_rec) |>
@@ -244,17 +243,11 @@ draws(drm_rec, variables = c("xi")) |>
 
 ##--- DRM Survival ----
 
-toggles_surv <- replace(toggles_rec, which(names(toggles_rec) == "sp_re"),
-                        "none") |>
-  c(list("iid_re" = "dens"))
-
 drm_surv <-
   update(drm_rec,
          formula_rec = ~ 1,
          formula_surv = ~ 1 + c_tavg + I(c_tavg * c_tavg),
-         ## .toggles = toggles_surv,
-         .priors = list(pr_zeta_a = 7, pr_zeta_b = 3,
-                        pr_alpha_mu = .5))
+         .priors = list(pr_zeta_a = 7, pr_zeta_b = 3))
 
 ##--- Convergence check ----
 
@@ -273,6 +266,37 @@ plot(drm_surv, type = "trace")
 summary(drm_surv)
 ## specific quantiles
 summary(drm_surv, probs = c(.1, .9))
+
+##--- DRM rec + surv ----
+
+toggles_rec <- list(ar_re = "dens",
+                    sp_re = "dens",
+                    movement = 1,
+                    est_surv = 1,
+                    est_init = 0,
+                    minit = 1)
+
+drm_rs <-
+  update(drm_rec,
+         formula_surv = ~ 1 + c_tavg,
+         .toggles = toggles_surv,
+         .priors = list(pr_zeta_a = 7, pr_zeta_b = 3))
+
+mcmc_diag(drm_rs) |>
+  print() |>
+  summary()
+
+par(mfrow = c(3, 5))
+plot(drm_rs, type = "density")
+
+par(mfrow = c(3, 5))
+plot(drm_rs, type = "trace")
+
+##--- parameter estimates ----
+
+summary(drm_rs)
+## specific quantiles
+summary(drm_rs, probs = c(.1, .9))
 
 ##--- * SDM ----
 
@@ -310,6 +334,14 @@ proj_surv <- predict(drm_surv,
                      cores = 4) |>
   summary(probs = c(.05, .5, .95))
 
+proj_rs <- predict(drm_rs,
+                   new_data = dat_test,
+                   past_data = filter(dat_train,
+                                      year == max(year)),
+                   seed = 125,
+                   cores = 4) |>
+  summary(probs = c(.05, .5, .95))
+
 proj_sdm <- predict(sdm_aux,
                     new_data = dat_test,
                     seed = 125,
@@ -331,6 +363,10 @@ fitted_surv <-
   fitted(drm_surv) |>
   summary(probs = c(.05, .5, .95))
 
+fitted_rs <-
+  fitted(drm_rs) |>
+  summary(probs = c(.05, .5, .95))
+
 fitted_sdm <-
   fitted(sdm_aux) |>
   summary(probs = c(.05, .5, .95))
@@ -345,6 +381,8 @@ bind_rows(
     mutate(model = "DRM (rec)"),
     bind_rows(fitted_surv, proj_surv) |>
     mutate(model = "DRM (surv)"),
+    bind_rows(fitted_rs, proj_rs) |>
+    mutate(model = "DRM (rec+surv)"),
     bind_rows(fitted_sdm, proj_sdm) |>
     mutate(model = "SDM")
 ) |>
@@ -383,6 +421,8 @@ ggsave(filename = "overleaf/img/forecast_rbw.pdf",
 bind_rows(
     bind_rows(fitted_rec, proj_rec) |>
     mutate(model = "DRM (rec)"),
+    bind_rows(fitted_rs, proj_rs) |>
+    mutate(model = "DRM (rec+surv)"),
     bind_rows(fitted_surv, proj_surv) |>
     mutate(model = "DRM (surv)"),
     bind_rows(fitted_sdm, proj_sdm) |>
@@ -453,10 +493,56 @@ ggsave(filename = "overleaf/img/surv_rbw.pdf",
        width = 6,
        height = 6 / gratio)
 
+##--- Relationships with the environment ----
+
+rec_fig2 <-
+  effects_drm(drm_rs,
+              process = "rec",
+              variable = "c_tavg") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["tavg"], 1),
+                     breaks = c(10, 15, 20, 25) - avgs["tavg"]) +
+  theme_bw() +
+  labs(x = "Averate air-temperature (in C)",
+       y = "Est. Recruitment (per km2)")
+
+rec_fig2
+
+gratio <- 0.5 * (1 + sqrt(5))
+
+ggsave(filename = "overleaf/img/recruitment_rbw.pdf",
+       plot = rec_fig,
+       width = 6,
+       height = 6 / gratio)
+
+##--- surv and environment ----
+
+surv_fig2 <-
+  effects_drm(drm_rs,
+              process = "surv",
+              variable = "c_tavg") |>
+  plot() +
+  scale_x_continuous(labels = \(x) round(x + avgs["tavg"], 1),
+                     breaks = c(10, 15, 20, 25) - avgs["tavg"]) +
+  theme_bw() +
+  labs(x = "Averate air-temperature (in C)",
+       y = "Est. survival rates")
+
+surv_fig2
+
+gratio <- 0.5 * (1 + sqrt(5))
+
+ggsave(filename = "overleaf/img/surv_rbw.pdf",
+       plot = surv_fig,
+       width = 6,
+       height = 6 / gratio)
+
+
 ##--- Figure 3 ----
 ##--- Panel for recruitment and survival ----
 
 plot_grid(rec_fig, surv_fig,
+          rec_fig2, surv_fig2,
           labels = "AUTO",
           label_size = 10)
 
