@@ -31,7 +31,7 @@ environment.
    if you need platform-specific details):
    ```r
    cmdstanr::check_cmdstan_toolchain(fix = TRUE)
-   cmdstanr::install_cmdstan(version = "2.38.0")
+   cmdstanr::install_cmdstan(version = "2.38.0") 
    ```
 
 3. **Install `drmr` (Stage 2)**: Once `CmdStan` is installed, install `drmr`
