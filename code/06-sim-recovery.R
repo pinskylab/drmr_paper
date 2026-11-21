@@ -197,6 +197,8 @@ fig_single_all <-
             ncol = 1,
             rel_heights = c(0.08, 1))
 
+fit_single_all
+
 ggsave(filename = "overleaf/img/sim_single_recovery.pdf",
        plot = fig_single_all,
        width = 7,
