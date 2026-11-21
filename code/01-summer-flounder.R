@@ -130,6 +130,31 @@ ggplot() +
                 color = 4) +
   theme_bw()
 
+##--- looking at new alpha prior ----
+
+alpha <- seq(from = -.99, to = .99, len = 201)
+
+tidyr::expand_grid(alpha = alpha,
+                   mean  = c(-1, 0, 1),
+                   sd    = c(0.25, 0.75, 1)) |>
+  transform(density =
+              normal_tanh(alpha, mean = mean, sd = sd)) |>
+  dplyr::rename("prior mean" = "mean",
+                "prior sd"   = "sd") |>
+  ggplot(aes(x = alpha, y = density)) +
+  geom_line(lwd = 1) +
+  facet_grid(`prior sd` ~ `prior mean`,
+             labeller = label_both) +
+  labs(x = expression(alpha),
+       y = expression(pi(alpha))) +
+  theme_bw()
+
+gratio <- 0.5 * (1 + sqrt(5))
+
+## ggsave(filename = "overleaf/img/prior_alpha.pdf",
+##        width = 7,
+##        height = .75 * 7 / gratio)
+
 ##--- DRM recruitment ----
 
 drm_rec <-
@@ -319,7 +344,7 @@ summary(drm_rs, probs = c(.1, .9))
 ##--- * DRM ----
 
 proj_rec <- predict(drm_rec,
-                    new_data = dat_test,
+                    newdata = dat_test,
                     past_data = filter(dat_train,
                                        year == max(year)),
                     seed = 125,
@@ -328,7 +353,7 @@ proj_rec <- predict(drm_rec,
   summary(probs = c(.05, .5, .95))
 
 proj_surv <- predict(drm_surv,
-                     new_data = dat_test,
+                     newdata = dat_test,
                      past_data = filter(dat_train,
                                         year == max(year)),
                      seed = 125,
@@ -337,7 +362,7 @@ proj_surv <- predict(drm_surv,
   summary(probs = c(.05, .5, .95))
 
 proj_rs <- predict(drm_rs,
-                   new_data = dat_test,
+                   newdata = dat_test,
                    past_data = filter(dat_train,
                                       year == max(year)),
                    seed = 125,
@@ -346,7 +371,7 @@ proj_rs <- predict(drm_rs,
   summary(probs = c(.05, .5, .95))
 
 proj_sdm <- predict(sdm_aux,
-                    new_data = dat_test,
+                    newdata = dat_test,
                     seed = 125,
                     cores = 4) |>
   summary(probs = c(.05, .5, .95))
@@ -373,53 +398,6 @@ fitted_rs <-
 fitted_sdm <-
   fitted(sdm_aux) |>
   summary(probs = c(.05, .5, .95))
-
-##--- Figure 2 ----
-
-aux_fig <-
-  bind_rows(dat_train, dat_test) |>
-  mutate(patch = factor(as.integer(patch),
-                        levels = rev(unique(as.integer(patch)))))
-  
-
-bind_rows(
-    bind_rows(fitted_rec, proj_rec) |>
-    mutate(model = "DRM (rec)"),
-    bind_rows(fitted_surv, proj_surv) |>
-    mutate(model = "DRM (surv)"),
-    bind_rows(fitted_rs, proj_rs) |>
-    mutate(model = "DRM (rec-surv)"),
-    bind_rows(fitted_sdm, proj_sdm) |>
-    mutate(model = "SDM")
-) |>
-  mutate(patch = factor(as.integer(patch),
-                        levels = rev(unique(as.integer(patch))))) |>
-  ## filter(model != "DRM (surv)") |>
-  ggplot(data = _) +
-  geom_vline(xintercept = first_year_forecast,
-             lty = 2) +
-  geom_ribbon(aes(x = year,
-                  ymin = q5, ymax = q95,
-                  fill = model),
-              color = "transparent",
-              alpha = .4) +
-  geom_line(aes(x = year, y = q50, color = model)) +
-  geom_point(data = aux_fig,
-             aes(x = year, y = dens), size = .5) +
-  facet_grid(rows = patch ~ model, scales = "free_y") +
-  scale_y_continuous(breaks = scales::trans_breaks(identity, identity,
-                                                   n = 3),
-                     trans = "log1p") +
-  theme_bw() +
-  guides(color = "none",
-         fill = "none") +
-  labs(y = "Density (in hundreds of individuals per square-km)",
-       x = "Year") +
-  theme(strip.background = element_rect(fill = "white"))
-
-ggsave(filename = "overleaf/img/forecast_sf.pdf",
-       width = 6,
-       height = 7)
 
 ##--- * Table 3 ----
 
@@ -454,6 +432,54 @@ bind_rows(
   xtable::xtable(caption = "Forecasting skill according to different metrics",
                  digits = 3) |>
   print(include.rownames = FALSE)
+
+##--- Figure 2 ----
+
+aux_fig <-
+  bind_rows(dat_train, dat_test) |>
+  mutate(patch = factor(as.integer(patch),
+                        levels = rev(unique(as.integer(patch)))))
+  
+first_year_forecast <- min(dat_test$year)
+
+bind_rows(
+    ## bind_rows(fitted_rec, proj_rec) |>
+    ## mutate(model = "DRM (rec)"),
+    ## bind_rows(fitted_surv, proj_surv) |>
+    ## mutate(model = "DRM (surv)"),
+    bind_rows(fitted_rs, proj_rs) |>
+    mutate(model = "DRM (rec-surv)"),
+    bind_rows(fitted_sdm, proj_sdm) |>
+    mutate(model = "SDM")
+) |>
+  mutate(patch = factor(as.integer(patch),
+                        levels = rev(unique(as.integer(patch))))) |>
+  ## filter(model != "DRM (surv)") |>
+  ggplot(data = _) +
+  geom_vline(xintercept = first_year_forecast,
+             lty = 2) +
+  geom_ribbon(aes(x = year,
+                  ymin = q5, ymax = q95,
+                  fill = model),
+              color = "transparent",
+              alpha = .4) +
+  geom_line(aes(x = year, y = q50, color = model)) +
+  geom_point(data = aux_fig,
+             aes(x = year, y = dens), size = .5) +
+  facet_grid(rows = patch ~ model, scales = "free_y") +
+  scale_y_continuous(breaks = scales::trans_breaks(identity, identity,
+                                                   n = 3),
+                     trans = "log1p") +
+  theme_bw() +
+  guides(color = "none",
+         fill = "none") +
+  labs(y = "Density (in hundreds of individuals per square-km)",
+       x = "Year") +
+  theme(strip.background = element_rect(fill = "white"))
+
+ggsave(filename = "overleaf/img/forecast_sf.pdf",
+       width = 6,
+       height = 7)
 
 ##--- Relationships with the environment ----
 
