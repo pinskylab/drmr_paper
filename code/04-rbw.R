@@ -279,7 +279,6 @@ toggles_rec <- list(ar_re = "dens",
 drm_rs <-
   update(drm_rec,
          formula_surv = ~ 1 + c_tavg,
-         .toggles = toggles_surv,
          .priors = list(pr_zeta_a = 7, pr_zeta_b = 3))
 
 mcmc_diag(drm_rs) |>
@@ -319,7 +318,7 @@ sdm_aux <-
 ##--- * DRM ----
 
 proj_rec <- predict(drm_rec,
-                    new_data = dat_test,
+                    newdata = dat_test,
                     past_data = filter(dat_train,
                                        year == max(year)),
                     seed = 125,
@@ -327,7 +326,7 @@ proj_rec <- predict(drm_rec,
   summary(probs = c(.05, .5, .95))
 
 proj_surv <- predict(drm_surv,
-                     new_data = dat_test,
+                     newdata = dat_test,
                      past_data = filter(dat_train,
                                         year == max(year)),
                      seed = 125,
@@ -335,7 +334,7 @@ proj_surv <- predict(drm_surv,
   summary(probs = c(.05, .5, .95))
 
 proj_rs <- predict(drm_rs,
-                   new_data = dat_test,
+                   newdata = dat_test,
                    past_data = filter(dat_train,
                                       year == max(year)),
                    seed = 125,
@@ -343,7 +342,7 @@ proj_rs <- predict(drm_rs,
   summary(probs = c(.05, .5, .95))
 
 proj_sdm <- predict(sdm_aux,
-                    new_data = dat_test,
+                    newdata = dat_test,
                     seed = 125,
                     cores = 4) |>
   summary(probs = c(.05, .5, .95))
