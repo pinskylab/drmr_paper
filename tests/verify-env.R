@@ -162,7 +162,7 @@ stopifnot(is.data.frame(fitted_drm), nrow(fitted_drm) == nrow(train_df))
 
 pred_drm <- predict(
   drm_fit,
-  new_data = test_df,
+  newdata = test_df,
   past_data = past_df,
   seed = 2026L
 ) |>
@@ -186,7 +186,7 @@ fitted_sdm <- fitted(sdm_fit) |>
   summary()
 stopifnot(is.data.frame(fitted_sdm), nrow(fitted_sdm) == nrow(train_df))
 
-pred_sdm <- predict(sdm_fit, new_data = test_df, seed = 2026L) |>
+pred_sdm <- predict(sdm_fit, newdata = test_df, seed = 2026L) |>
   summary()
 stopifnot(is.data.frame(pred_sdm), nrow(pred_sdm) == nrow(test_df))
 
