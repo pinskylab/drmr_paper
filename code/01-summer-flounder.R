@@ -135,13 +135,15 @@ ggplot() +
 alpha <- seq(from = -.99, to = .99, len = 201)
 
 tidyr::expand_grid(alpha = alpha,
-                   mean  = c(-1, 0, 1),
+                   mean  = c(-1, 0, 0.42, 1),
                    sd    = c(0.25, 0.75, 1)) |>
   transform(density =
               normal_tanh(alpha, mean = mean, sd = sd)) |>
   dplyr::rename("prior mean" = "mean",
                 "prior sd"   = "sd") |>
   ggplot(aes(x = alpha, y = density)) +
+  geom_vline(xintercept = 0.42,
+             col = 2, lty = 2) +
   geom_line(lwd = 1) +
   facet_grid(`prior sd` ~ `prior mean`,
              labeller = label_both) +
@@ -179,7 +181,9 @@ drm_rec <-
                           est_surv = 1,
                           est_init = 0,
                           minit = 1),
-          .priors = list(pr_zeta_a = 7, pr_zeta_b = 3),
+          .priors = list(pr_zeta_a = 7, pr_zeta_b = 3,
+                         pr_alpha_mu = tanh(0.42),
+                         pr_alpha_sd = 0.25),
           algo_args = list(parallel_chains = 4))
 
 sdm_aux <-
@@ -265,10 +269,17 @@ draws(drm_rec, variables = c("zeta")) |>
 
 draws(drm_rec, variables = c("sigma_t")) |>
   mcmc_dens_overlay() +
-  stat_function(fun = \(x) dlnorm(x,
-                                  meanlog = drm_rec$data$pr_lsigma_t_mu,
-                                  sdlog = drm_rec$data$pr_lsigma_t_sd),
-                xlim = c(0, .5),
+  stat_function(fun = \(x) exp(
+                               dcauchy(x,
+                                       location = drm_rec$data$pr_sigma_t_loc,
+                                       scale = drm_rec$data$pr_sigma_t_scale,
+                                       log = TRUE) -
+                               pcauchy(0,
+                                       location = drm_rec$data$pr_sigma_t_loc,
+                                       scale = drm_rec$data$pr_sigma_t_scale,
+                                       log = TRUE)
+                           ),
+                xlim = c(0, 1.2),
                 n = 501,
                 inherit.aes = FALSE,
                 color = 1,
@@ -401,6 +412,8 @@ fitted_sdm <-
 
 ##--- * Table 3 ----
 
+first_year_forecast <- min(dat_test$year)
+
 bind_rows(
     bind_rows(fitted_rec, proj_rec) |>
     mutate(model = "DRM (rec)"),
@@ -439,8 +452,6 @@ aux_fig <-
   bind_rows(dat_train, dat_test) |>
   mutate(patch = factor(as.integer(patch),
                         levels = rev(unique(as.integer(patch)))))
-  
-first_year_forecast <- min(dat_test$year)
 
 bind_rows(
     ## bind_rows(fitted_rec, proj_rec) |>
@@ -448,7 +459,7 @@ bind_rows(
     ## bind_rows(fitted_surv, proj_surv) |>
     ## mutate(model = "DRM (surv)"),
     bind_rows(fitted_rs, proj_rs) |>
-    mutate(model = "DRM (rec-surv)"),
+    mutate(model = "DRM (Rec+Surv)"),
     bind_rows(fitted_sdm, proj_sdm) |>
     mutate(model = "SDM")
 ) |>

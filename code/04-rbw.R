@@ -206,26 +206,41 @@ draws(drm_rec, variables = c("zeta")) |>
 
 draws(drm_rec, variables = c("sigma_t")) |>
   mcmc_dens_overlay() +
-  stat_function(fun = \(x) dlnorm(x,
-                                  meanlog = drm_rec$data$pr_lsigma_t_mu,
-                                  sdlog = drm_rec$data$pr_lsigma_t_sd),
-                xlim = c(0, .5),
+  stat_function(fun = \(x) exp(
+                               dcauchy(x,
+                                       location = drm_rec$data$pr_sigma_t_loc,
+                                       scale = drm_rec$data$pr_sigma_t_scale,
+                                       log = TRUE) -
+                               pcauchy(0,
+                                       location = drm_rec$data$pr_sigma_t_loc,
+                                       scale = drm_rec$data$pr_sigma_t_scale,
+                                       log = TRUE)
+                           ),
+                xlim = c(0, 1.2),
                 n = 501,
                 inherit.aes = FALSE,
-                color = 2,
+                color = 1,
+                lty = 2,
                 lwd = 1.2)
 
 draws(drm_rec, variables = c("sigma_s")) |>
   mcmc_dens_overlay() +
-  stat_function(fun = \(x) dlnorm(x,
-                                  meanlog = drm_rec$data$pr_lsigma_s_mu,
-                                  sdlog = drm_rec$data$pr_lsigma_s_sd),
-                xlim = c(0, .5),
+  stat_function(fun = \(x) exp(
+                               dcauchy(x,
+                                       location = drm_rec$data$pr_sigma_s_loc,
+                                       scale = drm_rec$data$pr_sigma_s_scale,
+                                       log = TRUE) -
+                               pcauchy(0,
+                                       location = drm_rec$data$pr_sigma_s_loc,
+                                       scale = drm_rec$data$pr_sigma_s_scale,
+                                       log = TRUE)
+                           ),
+                xlim = c(0, 2.0),
                 n = 501,
                 inherit.aes = FALSE,
-                color = 2,
-                lwd = 1.2
-)
+                color = 1,
+                lty = 2,
+                lwd = 1.2)
 
 draws(drm_rec, variables = c("xi")) |>
   mcmc_dens_overlay() +
@@ -268,13 +283,6 @@ summary(drm_surv)
 summary(drm_surv, probs = c(.1, .9))
 
 ##--- DRM rec + surv ----
-
-toggles_rec <- list(ar_re = "dens",
-                    sp_re = "dens",
-                    movement = 1,
-                    est_surv = 1,
-                    est_init = 0,
-                    minit = 1)
 
 drm_rs <-
   update(drm_rec,
