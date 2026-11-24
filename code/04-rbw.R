@@ -447,6 +447,7 @@ bind_rows(
   group_by(type, model) |>
   summarise(across(rmse:is, mean)) |>
   ungroup() |>
+  mutate(rmse = 10 * sqrt(rmse)) |>
   rename_all(toupper) |>
   rename("Model" = "MODEL",
          "IS (90%)" = "IS") |>
