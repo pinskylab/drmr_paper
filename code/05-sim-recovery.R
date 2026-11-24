@@ -273,10 +273,17 @@ mc_summary_table |>
                  digits = 3) |>
   print(include.rownames = FALSE)
 
+mc_summary_table |>
+  select(variable, true_val, mean_est, coverage_90, coverage_95) |>
+  xtable::xtable(caption = "Monte Carlo parameter-recovery summary",
+                 digits = 3) |>
+  print(include.rownames = FALSE)
+
 ##--- * coverage plot ----
 
 fig_mc_coverage <-
   mc_draws_df |>
+  ## comment the following line to show the graph for all parameters
   filter(grepl("^beta_[rs]", variable)) |>
   mutate(covered_90 = (true_val >= q5) & (true_val <= q95)) |>
   group_by(variable) |>
@@ -307,7 +314,4 @@ fig_mc_coverage <-
   theme(legend.position = "top",
         strip.background = element_rect(fill = "white"))
 
-ggsave(filename = "overleaf/img/sim_mc_coverage.pdf",
-       plot = fig_mc_coverage,
-       width = 7,
-       height = 5)
+fig_mc_coverage

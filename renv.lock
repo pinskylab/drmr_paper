@@ -881,9 +881,8 @@
       "Source": "Local",
       "Type": "Package",
       "Title": "An R package with pre-compiled cmdstan code for dynamic range models",
-      "Authors@R": "c( person(given = \"Lucas\", family = \"da Cunha Godoy\", email = \"lcgodoy@duck.com\", role = c(\"aut\", \"cre\"), comment = c(ORCID = \"0000-0003-4265-972X\")), person(given = \"Malin\", family = \"Pinsky\", email = \"mpinsky@ucsc.edu\", role = c(\"aut\"), comment = c(ORCID = \"0000-0002-8523-8952\")) )",
+      "Authors@R": "person(given = \"Anonymous\", email = \"anonymous@example.com\", role = c(\"aut\", \"cre\"))",
       "Description": "The models available are described in the vignette. The class of models we provide were first discussed in Pagel and Schur (2012) (<doi:10.1111/j.1466-8238.2011.00663.x>).",
-      "BugReports": "https://github.com/pinskylab/drmr/issues/",
       "Depends": [
         "R (>= 4.3.0)"
       ],
@@ -906,8 +905,10 @@
         "gridExtra",
         "quarto",
         "loo",
-        "bayesplot"
+        "bayesplot",
+        "testthat (>= 3.0.0)"
       ],
+      "Config/testthat/edition": "3",
       "Config/Needs/website": "ggplot2, r-lib/pkgdown, quarto",
       "Additional_repositories": "https://stan-dev.r-universe.dev/",
       "SystemRequirements": "CmdStan (https://mc-stan.org/users/interfaces/cmdstan)",
@@ -917,11 +918,10 @@
       "VignetteBuilder": "quarto",
       "Language": "en-US",
       "License": "GPL (>= 3)",
-      "URL": "https://pinskylab.github.io/drmr/",
       "Config/roxygen2/version": "8.1.1",
       "NeedsCompilation": "yes",
-      "Author": "Lucas da Cunha Godoy [aut, cre] (ORCID: <https://orcid.org/0000-0003-4265-972X>), Malin Pinsky [aut] (ORCID: <https://orcid.org/0000-0002-8523-8952>)",
-      "Maintainer": "Lucas da Cunha Godoy <lcgodoy@duck.com>",
+      "Author": "Anonymous [aut, cre]",
+      "Maintainer": "Anonymous <anonymous@example.com>",
       "RemoteType": "local",
       "RemoteUrl": "pkg/drmr_1.1.3.tar.gz"
     },
