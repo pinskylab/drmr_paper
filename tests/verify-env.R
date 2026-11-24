@@ -50,7 +50,6 @@ if (!nzchar(stan_dir) || !dir.exists(stan_dir)) {
 }
 ext <- if (.Platform$OS.type == "windows") ".exe" else ""
 model_names <- c(
-  "adults_drm",
   "drm",
   "fitted_drm",
   "fitted_sdm",
